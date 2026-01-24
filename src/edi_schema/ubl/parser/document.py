@@ -84,9 +84,24 @@ def parse_with_schema(
     Returns:
         ParseResult with schema-bound document or errors
     """
-    # First, parse without schema
     result = parse(source, recover=recover)
+    bind_schema(result, schema)
+    return result
 
+
+def bind_schema(result: ParseResult, schema: UBLSchema) -> ParseResult:
+    """
+    Bind a schema to an already-parsed document.
+
+    This allows reusing a ParseResult without re-parsing the XML.
+
+    Args:
+        result: ParseResult from a previous parse() call
+        schema: UBL schema for the document type
+
+    Returns:
+        The same ParseResult with schema binding applied
+    """
     if result.document is None:
         return result
 
@@ -197,18 +212,16 @@ def parse_file(
     Returns:
         ParseResult with parsed document or errors
     """
-    # Parse without schema first
     result = parse(path)
 
     if result.document is None:
         return result
 
-    # Load schema if loader provided
+    # Bind schema if loader provided
     if schema_loader:
         try:
             schema = schema_loader.load(result.document.document_type)
-            # Re-parse with schema binding
-            return parse_with_schema(path, schema)
+            bind_schema(result, schema)
         except FileNotFoundError:
             result.add_error(
                 ParseError(

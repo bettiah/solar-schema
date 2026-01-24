@@ -7,7 +7,7 @@ This package provides parsing for UBL XML documents:
 - Error collection and recovery
 """
 
-from .document import parse, parse_with_schema
+from .document import bind_schema, parse, parse_file, parse_with_schema
 from .xml_parser import XMLParseError, parse_xml
 
 __all__ = [
@@ -15,4 +15,6 @@ __all__ = [
     "XMLParseError",
     "parse",
     "parse_with_schema",
+    "parse_file",
+    "bind_schema",
 ]
