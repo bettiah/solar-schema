@@ -10,11 +10,12 @@ from edi_schema.ubl.models import (
     ABIE,
     ASBIE,
     BBIE,
-    CodeList,
-    CodeValue,
     DocumentType,
     UBLSchema,
 )
+
+from .abies import get_abies
+from .code_lists import get_all_code_lists
 
 
 # Document type definition
@@ -28,15 +29,15 @@ _document_type = DocumentType(
 )
 
 
-# ABIE definitions
-{% for name, abie in abies.items() %}
-_{{ to_module_name(name) }}_abie = ABIE(
-    name={{ repr_str(abie.name) }},
-    definition={{ repr_str(abie.definition) }},
-    object_class={{ repr_str(abie.object_class) }},
-    namespace={{ repr_str(abie.namespace) }},
+# Root ABIE (document-specific)
+{% set root_abie = abies[schema.name] %}
+_root_abie = ABIE(
+    name={{ repr_str(root_abie.name) }},
+    definition={{ repr_str(root_abie.definition) }},
+    object_class={{ repr_str(root_abie.object_class) }},
+    namespace={{ repr_str(root_abie.namespace) }},
     bbies=[
-        {% for bbie in abie.bbies %}
+        {% for bbie in root_abie.bbies %}
         BBIE(
             name={{ repr_str(bbie.name) }},
             definition={{ repr_str(bbie.definition) }},
@@ -49,7 +50,7 @@ _{{ to_module_name(name) }}_abie = ABIE(
         {% endfor %}
     ],
     asbies=[
-        {% for asbie in abie.asbies %}
+        {% for asbie in root_abie.asbies %}
         ASBIE(
             name={{ repr_str(asbie.name) }},
             definition={{ repr_str(asbie.definition) }},
@@ -62,41 +63,30 @@ _{{ to_module_name(name) }}_abie = ABIE(
     ],
 )
 
-{% endfor %}
-
 # Link root ABIE to document type
-_document_type.root_abie = _{{ to_module_name(schema.name) }}_abie
+_document_type.root_abie = _root_abie
 
 
-# ABIE registry
-_abies = {
-    {% for name, abie in abies.items() %}
-    {{ repr_str(name) }}: _{{ to_module_name(name) }}_abie,
+# Referenced shared ABIEs (from common aggregate components)
+_referenced_abie_names = [
+    {% for name in abies.keys() if name != schema.name %}
+    {{ repr_str(name) }},
     {% endfor %}
-}
+]
 
 
-# Code lists
-{% if code_lists %}
-_code_lists = {
-    {% for cl_id, cl in code_lists.items() %}
-    {{ repr_str(cl_id) }}: CodeList(
-        id={{ repr_str(cl.id) }},
-        short_name={{ repr_str(cl.short_name) }},
-        long_name={{ repr_str(cl.long_name) }},
-        version={{ repr_str(cl.version) }},
-        agency_name={{ repr_str(cl.agency_name) }},
-        values=[
-            {% for cv in cl.values %}
-            CodeValue(code={{ repr_str(cv.code) }}, name={{ repr_str(cv.name) }}),
-            {% endfor %}
-        ],
-    ),
-    {% endfor %}
-}
-{% else %}
-_code_lists = {}
-{% endif %}
+# Build ABIE registry combining root + shared ABIEs
+def _build_abies() -> dict[str, ABIE]:
+    abies = {_root_abie.name: _root_abie}
+    abies.update(get_abies(_referenced_abie_names))
+    return abies
+
+
+_abies = _build_abies()
+
+
+# Code lists (shared across all documents)
+_code_lists = get_all_code_lists()
 
 
 def get_schema() -> UBLSchema:

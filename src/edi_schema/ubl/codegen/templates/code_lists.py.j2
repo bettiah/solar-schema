@@ -1,0 +1,38 @@
+"""
+Shared Code Lists for UBL {{ version }}.
+
+Contains all code lists used across document types.
+Auto-generated from UBL genericode files.
+DO NOT EDIT MANUALLY.
+"""
+
+from edi_schema.ubl.models import CodeList, CodeValue
+
+
+# Registry mapping code list IDs to instances
+ALL_CODE_LISTS: dict[str, CodeList] = {
+    {% for cl_id, cl in code_lists.items() %}
+    {{ repr_str(cl_id) }}: CodeList(
+        id={{ repr_str(cl.id) }},
+        short_name={{ repr_str(cl.short_name) }},
+        long_name={{ repr_str(cl.long_name) }},
+        version={{ repr_str(cl.version) }},
+        agency_name={{ repr_str(cl.agency_name) }},
+        values=[
+            {% for cv in cl.values %}
+            CodeValue(code={{ repr_str(cv.code) }}, name={{ repr_str(cv.name) }}),
+            {% endfor %}
+        ],
+    ),
+    {% endfor %}
+}
+
+
+def get_code_list(code_list_id: str) -> CodeList | None:
+    """Get a code list by ID."""
+    return ALL_CODE_LISTS.get(code_list_id)
+
+
+def get_all_code_lists() -> dict[str, CodeList]:
+    """Get all code lists."""
+    return ALL_CODE_LISTS.copy()

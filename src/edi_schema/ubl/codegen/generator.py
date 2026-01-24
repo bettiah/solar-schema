@@ -15,6 +15,7 @@ from ..models import (
     UBLSchema,
 )
 from ..schema import UBLSchemaLoader
+from ..schema_parsers import parse_all_code_lists, parse_cac_types
 
 
 class UBLSchemaGenerator:
@@ -91,6 +92,10 @@ class UBLSchemaGenerator:
 
             document_types = UBL_DOCUMENT_TYPES
 
+        # Generate shared modules first
+        self._generate_shared_abies(loader)
+        self._generate_shared_code_lists(loader)
+
         generated: list[Path] = []
         for doc_type in document_types:
             try:
@@ -106,6 +111,66 @@ class UBLSchemaGenerator:
         self._generate_registry(document_types)
 
         return generated
+
+    def _generate_shared_abies(self, loader: UBLSchemaLoader) -> Path:
+        """
+        Generate the shared ABIEs module with all common aggregate components.
+
+        Args:
+            loader: Schema loader to use
+
+        Returns:
+            Path to the generated module
+        """
+        template = self.env.get_template("abies.py.j2")
+
+        # Load all CAC types (ABIEs) from common components
+        cac_file = loader.common_path / "UBL-CommonAggregateComponents-2.5.xsd"
+        all_abies = parse_cac_types(cac_file)
+
+        output_path = self.output_dir / "abies.py"
+
+        content = template.render(
+            abies=all_abies,
+            version="2.5",
+            to_module_name=self._to_module_name,
+            repr_str=repr,
+        )
+
+        output_path.write_text(content)
+        print(f"  Generated shared ABIEs module: {output_path.name}")
+        return output_path
+
+    def _generate_shared_code_lists(self, loader: UBLSchemaLoader) -> Path:
+        """
+        Generate the shared code lists module.
+
+        Args:
+            loader: Schema loader to use
+
+        Returns:
+            Path to the generated module
+        """
+        template = self.env.get_template("code_lists.py.j2")
+
+        # Load all code lists
+        if loader.code_list_path.exists():
+            code_lists = parse_all_code_lists(loader.code_list_path)
+        else:
+            code_lists = {}
+
+        output_path = self.output_dir / "code_lists.py"
+
+        content = template.render(
+            code_lists=code_lists,
+            version="2.5",
+            to_module_name=self._to_module_name,
+            repr_str=repr,
+        )
+
+        output_path.write_text(content)
+        print(f"  Generated shared code lists module: {output_path.name}")
+        return output_path
 
     def _generate_schema_module(self, schema: UBLSchema) -> Path:
         """Generate a Python module for a schema."""
