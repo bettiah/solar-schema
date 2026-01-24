@@ -206,3 +206,39 @@ def generate_abie_code(abie: ABIE) -> str:
         {asbies_code}
     ],
 )"""
+
+
+def main():
+    """Command-line interface for schema generation."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate UBL schema modules")
+    parser.add_argument("--source", required=True, help="Path to UBL XSD directory")
+    parser.add_argument("--output", required=True, help="Output directory")
+    parser.add_argument("--version", default="2.5", help="Version identifier (default: 2.5)")
+    parser.add_argument("--documents", nargs="*", help="Specific document types to generate")
+
+    args = parser.parse_args()
+
+    source_path = Path(args.source)
+    output_path = Path(args.output)
+
+    if not source_path.exists():
+        print(f"Error: Source directory does not exist: {source_path}")
+        return
+
+    print(f"UBL Schema Generator v{args.version}")
+    print(f"  Source: {source_path}")
+    print(f"  Output: {output_path}")
+
+    loader = UBLSchemaLoader(source_path)
+    generator = UBLSchemaGenerator(output_path)
+
+    document_types = args.documents if args.documents else None
+    generated = generator.generate_all(loader, document_types)
+
+    print(f"\nGenerated {len(generated)} schema modules")
+
+
+if __name__ == "__main__":
+    main()

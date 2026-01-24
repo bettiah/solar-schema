@@ -13,7 +13,6 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
-    "jinja2>=3.1.6",
     "taskipy>=1.14.1",
 ]
 
@@ -59,5 +58,9 @@ codegen-edifact-d96a = { cmd = "python -m edi_schema.edifact.codegen.generator -
 codegen-edifact-d23a = { cmd = "python -m edi_schema.edifact.codegen.generator --source /Users/me/Downloads/edi/schema/edifact/d23a --output src/edi_schema/edifact/schemas/d23a --version d23a", help = "generate EDIFACT D23A schemas" }
 codegen-edifact-all = { cmd = "task codegen-edifact-d96a && task codegen-edifact-d23a", help = "generate all EDIFACT schemas" }
 
+# UBL code generation
+codegen-ubl-2.5 = { cmd = "python -m edi_schema.ubl.codegen.generator --source /Users/me/Downloads/edi/ubl/UBL-2.5/xsd --output src/edi_schema/ubl/schemas/v2_5 --version 2.5", help = "generate UBL 2.5 schemas" }
+codegen-ubl-all = { cmd = "task codegen-ubl-2.5", help = "generate all UBL schemas" }
+
 # Generate all schemas
-codegen-all = { cmd = "task codegen-x12-all && task codegen-edifact-all", help = "generate all schemas (X12 + EDIFACT)" }
+codegen-all = { cmd = "task codegen-x12-all && task codegen-edifact-all && task codegen-ubl-all", help = "generate all schemas (X12 + EDIFACT + UBL)" }
