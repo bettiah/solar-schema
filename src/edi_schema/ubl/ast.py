@@ -222,6 +222,7 @@ class ParseError:
         xpath: XPath to the problematic element
         expected: What was expected (optional)
         actual: What was found (optional)
+        context: Additional context data (optional)
     """
 
     code: str
@@ -232,6 +233,7 @@ class ParseError:
     xpath: str | None = None
     expected: str | None = None
     actual: str | None = None
+    context: dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
         parts = [f"[{self.code}] {self.message}"]
@@ -240,6 +242,30 @@ class ParseError:
         elif self.xpath:
             parts.append(f" at {self.xpath}")
         return "".join(parts)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        result: dict[str, Any] = {
+            "code": self.code,
+            "message": self.message,
+            "severity": self.severity.value,
+            "category": self.category.value,
+        }
+        if self.position:
+            result["position"] = {
+                "line": self.position.line,
+                "column": self.position.column,
+                "xpath": self.position.xpath,
+            }
+        if self.xpath:
+            result["xpath"] = self.xpath
+        if self.expected:
+            result["expected"] = self.expected
+        if self.actual:
+            result["actual"] = self.actual
+        if self.context:
+            result["context"] = self.context
+        return result
 
 
 @dataclass
