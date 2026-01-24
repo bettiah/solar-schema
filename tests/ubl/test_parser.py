@@ -299,22 +299,18 @@ class TestDocumentParser:
         assert result.errors[0].category == ErrorCategory.STRUCTURAL
 
 
-# Tests requiring schema files
-UBL_XSD_PATH = Path("/Users/me/Downloads/edi/ubl/UBL-2.5/xsd")
-
-pytestmark_schema = pytest.mark.skipif(
-    not UBL_XSD_PATH.exists(), reason="UBL schema files not available"
-)
+# Tests requiring generated schemas
+from edi_schema.ubl.schemas import SCHEMAS_GENERATED
 
 
 class TestParseWithSchema:
     """Tests for schema-bound parsing."""
 
-    @pytest.mark.skipif(not UBL_XSD_PATH.exists(), reason="UBL schema not available")
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
     def test_parse_with_schema_binds_components(self):
-        from edi_schema.ubl.schema import UBLSchemaLoader
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
 
-        loader = UBLSchemaLoader(UBL_XSD_PATH)
+        loader = GeneratedUBLSchemaLoader()
         schema = loader.load("Invoice")
 
         result = parse_with_schema(SAMPLE_INVOICE_XML, schema)
@@ -323,11 +319,11 @@ class TestParseWithSchema:
         # Root should be bound to Invoice ABIE
         assert result.document.root.schema_component is not None
 
-    @pytest.mark.skipif(not UBL_XSD_PATH.exists(), reason="UBL schema not available")
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
     def test_parse_wrong_document_type(self):
-        from edi_schema.ubl.schema import UBLSchemaLoader
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
 
-        loader = UBLSchemaLoader(UBL_XSD_PATH)
+        loader = GeneratedUBLSchemaLoader()
         schema = loader.load("Order")  # Wrong schema for Invoice
 
         result = parse_with_schema(SAMPLE_INVOICE_XML, schema)

@@ -603,3 +603,89 @@ class TestCreateValidator:
             levels={ValidationLevel.SCHEMA},
         )
         assert ValidationLevel.SCHEMA in validator.levels
+
+
+# Integration tests using generated schemas
+from edi_schema.ubl.schemas import SCHEMAS_GENERATED
+
+
+class TestValidatorWithGeneratedSchemas:
+    """Integration tests using pre-generated schemas."""
+
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
+    def test_validate_invoice_with_generated_schema(self):
+        """Test validation using the generated Invoice schema."""
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
+
+        loader = GeneratedUBLSchemaLoader()
+        schema = loader.load("Invoice")
+
+        # Create a minimal valid invoice element
+        root = ParsedElement(
+            tag="Invoice",
+            namespace="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+            children=[
+                ParsedElement(
+                    tag="ID",
+                    namespace="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+                    value="INV-001",
+                ),
+                ParsedElement(
+                    tag="IssueDate",
+                    namespace="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+                    value="2024-01-15",
+                ),
+            ],
+            schema_component=schema.document_type.root_abie,
+        )
+
+        doc = ParsedDocument(
+            document_type="Invoice",
+            version="2.5",
+            root=root,
+        )
+
+        validator = create_validator(schema)
+        result = validator.validate(doc)
+
+        # Validation runs without crashing
+        assert result is not None
+        assert isinstance(result, ValidationResult)
+
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
+    def test_generated_schema_has_code_lists(self):
+        """Test that generated schemas include code lists."""
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
+
+        loader = GeneratedUBLSchemaLoader()
+        schema = loader.load("Invoice")
+
+        # Should have code lists
+        assert len(schema.code_lists) > 0
+        assert "CurrencyCode" in schema.code_lists
+
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
+    def test_generated_schema_has_abies(self):
+        """Test that generated schemas include ABIEs."""
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
+
+        loader = GeneratedUBLSchemaLoader()
+        schema = loader.load("Invoice")
+
+        # Should have ABIEs
+        assert len(schema.abies) > 0
+        assert "Invoice" in schema.abies
+        assert "Party" in schema.abies  # Common component
+
+    @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
+    def test_multiple_document_types(self):
+        """Test loading multiple document types from generated schemas."""
+        from edi_schema.ubl import GeneratedUBLSchemaLoader
+
+        loader = GeneratedUBLSchemaLoader()
+
+        doc_types = ["Invoice", "Order", "CreditNote", "Waybill"]
+        for doc_type in doc_types:
+            schema = loader.load(doc_type)
+            assert schema.name == doc_type
+            assert schema.document_type.root_abie is not None

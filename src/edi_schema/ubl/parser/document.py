@@ -16,8 +16,7 @@ from ..ast import (
     ParseResult,
     SourcePosition,
 )
-from ..models import ABIE, ASBIE, BBIE, UBLSchema
-from ..schema import UBLSchemaLoader
+from ..models import ABIE, ASBIE, BBIE, SchemaLoader, UBLSchema
 from .xml_parser import XMLParseError, get_document_type, get_ubl_version, parse_xml
 
 
@@ -200,7 +199,7 @@ def _find_component(
 
 def parse_file(
     path: Path,
-    schema_loader: UBLSchemaLoader | None = None,
+    schema_loader: SchemaLoader | None = None,
 ) -> ParseResult:
     """
     Parse a UBL document from a file.

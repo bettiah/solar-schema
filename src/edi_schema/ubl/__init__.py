@@ -33,8 +33,17 @@ from .models import (
     CodeValue,
     DocumentType,
     QualifiedDataType,
+    SchemaLoader,
     UBLSchema,
     UnqualifiedDataType,
+)
+from .schema import UBLSchemaLoader
+from .schemas import (
+    SCHEMAS_GENERATED,
+    GeneratedUBLSchemaLoader,
+    get_schema,
+    list_schemas,
+    schema_exists,
 )
 
 __all__ = [
@@ -59,6 +68,14 @@ __all__ = [
     # Code lists
     "CodeList",
     "CodeValue",
+    # Schema loaders
+    "SchemaLoader",
+    "UBLSchemaLoader",
+    "GeneratedUBLSchemaLoader",
+    "get_schema",
+    "list_schemas",
+    "schema_exists",
+    "SCHEMAS_GENERATED",
     # AST
     "ErrorCategory",
     "ErrorSeverity",

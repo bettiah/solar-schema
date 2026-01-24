@@ -18,6 +18,7 @@ from .data_type import (
     UnqualifiedDataType,
 )
 from .document import UBL_DOCUMENT_TYPES, DocumentType, UBLSchema
+from .loader import SchemaLoader
 
 __all__ = [
     # Data types
@@ -41,4 +42,6 @@ __all__ = [
     "CodeListColumn",
     "CodeValue",
     "STANDARD_CODE_LISTS",
+    # Loader protocol
+    "SchemaLoader",
 ]

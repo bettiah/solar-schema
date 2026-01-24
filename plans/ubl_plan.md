@@ -87,9 +87,16 @@ src/edi_schema/ubl/
 │   ├── __init__.py           # Public API exports
 │   ├── registry.py           # Version dispatch, GeneratedUBLSchemaLoader
 │   └── v2_5/                  # Generated 2.5 schemas
+│       ├── abies.py          # Shared ABIE definitions (all 200+ ABIEs)
+│       ├── code_lists.py     # Shared code lists (14 lists)
+│       ├── invoice.py        # Document schema (imports shared modules)
+│       └── ...               # 101 document schemas
 ├── codegen/
 │   ├── generator.py          # UBLSchemaGenerator class
 │   └── templates/            # Jinja2 templates
+│       ├── schema.py.j2      # Document schema template
+│       ├── abies.py.j2       # Shared ABIEs template
+│       └── code_lists.py.j2  # Shared code lists template
 ├── ast.py                    # AST node types, error types
 ├── parser/
 │   ├── xml_parser.py         # XML parsing, namespace handling
@@ -230,21 +237,33 @@ class UBLSchema:
 ### Schema API
 
 ```python
-# Recommended: Generated schemas (fastest)
-from edi_schema.ubl.schemas import GeneratedUBLSchemaLoader, get_schema
+# Recommended: Generated schemas (fastest, ~50x faster than runtime)
+from edi_schema.ubl import GeneratedUBLSchemaLoader, get_schema
 
-loader = GeneratedUBLSchemaLoader(version="2.5")
+loader = GeneratedUBLSchemaLoader()
 schema = loader.load("Invoice")
 
 # Or use convenience functions
 schema = get_schema("Invoice", version="2.5")
 
-# Runtime loader for custom schema directories
-from edi_schema.ubl.schema import UBLSchemaLoader
+# Both loaders implement SchemaLoader protocol
+from edi_schema.ubl import SchemaLoader
+def process_document(loader: SchemaLoader):
+    schema = loader.load("Invoice")
+    # Works with either loader type
+
+# Runtime loader for custom schema directories (used for code generation)
+from edi_schema.ubl import UBLSchemaLoader
 loader = UBLSchemaLoader(Path("/custom/ubl/xsd/path"))
 ```
 
 ### Code Generation
+
+Generated schemas use shared modules to minimize redundancy:
+- `abies.py`: All 200+ ABIEs defined once (1.1MB)
+- `code_lists.py`: All 14 code lists defined once (643KB)
+- Document schemas: Only root ABIE + reference lists (7-25KB each)
+- **Total size: 5.5MB** (vs 104MB with embedded definitions)
 
 ```bash
 task codegen-ubl-2.5    # Generate 2.5 schemas
@@ -649,13 +668,20 @@ def parse_genericode(path: Path) -> GenericodeList:
 
 ## Implementation Summary
 
-All 6 phases completed with **181 tests** total:
+All 6 phases completed with **186 tests** total:
 - Phase 1: Schema Models & Parsers - 43 tests
 - Phase 2: Document Parser - 25 tests
-- Phase 3: Validation - 36 tests
+- Phase 3: Validation - 40 tests (includes generated schema integration tests)
 - Phase 4: Code Generation - 13 tests
 - Phase 5: Document Writer - 38 tests
 - Phase 6: ApplicationResponse - 27 tests
+
+### Recent Optimizations
+
+1. **Shared Schema Modules**: ABIEs and code lists are generated once and imported by document schemas (104MB → 5.5MB)
+2. **SchemaLoader Protocol**: Both `UBLSchemaLoader` and `GeneratedUBLSchemaLoader` implement `SchemaLoader` for interchangeability
+3. **Parser Optimization**: `parse_file` now parses XML once and binds schema separately via `bind_schema()`
+4. **Test Coverage**: Integration tests exercise generated schemas via `GeneratedUBLSchemaLoader`
 
 ---
 
@@ -713,11 +739,16 @@ print(invoice.to_xml(pretty=True))
 
 ---
 
-## Generated Schema Stats (Estimated)
+## Generated Schema Stats
 
-| Version | Documents | ABIEs | BBIEs | Code Lists |
-|---------|-----------|-------|-------|------------|
-| 2.5 | 101 | ~500 | ~300 | 14 |
+| Version | Documents | ABIEs | Code Lists | Total Size |
+|---------|-----------|-------|------------|------------|
+| 2.5 | 101 | 200+ | 14 | 5.5MB |
+
+Schema module sizes:
+- `abies.py`: 1.1MB (shared ABIEs)
+- `code_lists.py`: 643KB (shared code lists)
+- Document schemas: 7-25KB each (root ABIE + references)
 
 ---
 
