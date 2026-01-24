@@ -25,6 +25,17 @@ from .models import (
     UBLSchema,
     UnqualifiedDataType,
 )
+from .ast import (
+    ErrorCategory,
+    ErrorSeverity,
+    ParsedAttribute,
+    ParsedDocument,
+    ParsedElement,
+    ParseError,
+    ParseResult,
+    ParseStatistics,
+    SourcePosition,
+)
 
 __all__ = [
     # Enums
@@ -48,4 +59,14 @@ __all__ = [
     # Code lists
     "CodeList",
     "CodeValue",
+    # AST
+    "ErrorCategory",
+    "ErrorSeverity",
+    "ParsedAttribute",
+    "ParsedDocument",
+    "ParsedElement",
+    "ParseError",
+    "ParseResult",
+    "ParseStatistics",
+    "SourcePosition",
 ]
