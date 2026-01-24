@@ -1,0 +1,132 @@
+"""
+UBL Schema Registry.
+
+Provides centralized access to generated UBL schemas with lazy loading.
+"""
+
+from typing import Callable
+
+from ..models import UBLSchema
+
+
+# Schema factory type
+SchemaFactory = Callable[[], UBLSchema]
+
+
+# Registry of schema factories (lazy loading)
+_schema_factories: dict[str, SchemaFactory] = {}
+
+
+def _register_schema(name: str, factory: SchemaFactory) -> None:
+    """Register a schema factory."""
+    _schema_factories[name] = factory
+
+
+def get_schema(name: str, version: str = "2.5") -> UBLSchema:
+    """
+    Get a schema by document type name.
+
+    Args:
+        name: Document type name (e.g., 'Invoice')
+        version: UBL version (default: '2.5')
+
+    Returns:
+        UBLSchema instance
+
+    Raises:
+        ValueError: If schema not found
+    """
+    if version != "2.5":
+        raise ValueError(f"Unsupported UBL version: {version}")
+
+    if name not in _schema_factories:
+        raise ValueError(f"Unknown document type: {name}")
+
+    return _schema_factories[name]()
+
+
+def list_schemas(version: str = "2.5") -> list[str]:
+    """
+    List available schema names.
+
+    Args:
+        version: UBL version (default: '2.5')
+
+    Returns:
+        List of document type names
+    """
+    if version != "2.5":
+        return []
+    return list(_schema_factories.keys())
+
+
+def schema_exists(name: str, version: str = "2.5") -> bool:
+    """
+    Check if a schema exists.
+
+    Args:
+        name: Document type name
+        version: UBL version
+
+    Returns:
+        True if schema is available
+    """
+    if version != "2.5":
+        return False
+    return name in _schema_factories
+
+
+class GeneratedUBLSchemaLoader:
+    """
+    Schema loader using pre-generated schemas.
+
+    Provides the same interface as UBLSchemaLoader but uses
+    pre-generated Python modules for ~50x faster loading.
+
+    Usage:
+        loader = GeneratedUBLSchemaLoader()
+        schema = loader.load("Invoice")
+    """
+
+    def __init__(self, version: str = "2.5"):
+        """
+        Initialize the loader.
+
+        Args:
+            version: UBL version to load (default: '2.5')
+        """
+        self.version = version
+
+    def load(self, document_type: str) -> UBLSchema:
+        """
+        Load a schema by document type.
+
+        Args:
+            document_type: Document type name
+
+        Returns:
+            UBLSchema instance
+
+        Raises:
+            ValueError: If schema not found
+        """
+        return get_schema(document_type, self.version)
+
+    def exists(self, document_type: str) -> bool:
+        """Check if a schema exists."""
+        return schema_exists(document_type, self.version)
+
+    def list_available(self) -> list[str]:
+        """List available document types."""
+        return list_schemas(self.version)
+
+
+# Register schema factories
+# Each import triggers lazy registration
+{% for doc_type in document_types %}
+def _load_{{ to_module_name(doc_type) }}() -> UBLSchema:
+    from .v2_5 import {{ to_module_name(doc_type) }}
+    return {{ to_module_name(doc_type) }}.get_schema()
+
+_register_schema("{{ doc_type }}", _load_{{ to_module_name(doc_type) }})
+{% endfor %}

@@ -1,0 +1,24 @@
+"""
+Generated UBL 2.5 Schemas.
+
+Auto-generated from UBL 2.5 XSD schemas.
+DO NOT EDIT MANUALLY.
+
+Usage:
+    from edi_schema.ubl.schemas.v2_5 import invoice
+    schema = invoice.get_schema()
+
+    # Or use the registry:
+    from edi_schema.ubl.schemas import get_schema
+    schema = get_schema("Invoice", version="2.5")
+"""
+
+{% for module in modules %}
+from . import {{ module }}
+{% endfor %}
+
+__all__ = [
+    {% for module in modules %}
+    "{{ module }}",
+    {% endfor %}
+]

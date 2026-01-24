@@ -1,0 +1,118 @@
+"""
+Generated UBL schema for {{ schema.name }}.
+
+Auto-generated from UBL 2.5 XSD schemas.
+DO NOT EDIT MANUALLY.
+"""
+
+from edi_schema.ubl.enums import Cardinality
+from edi_schema.ubl.models import (
+    ABIE,
+    ASBIE,
+    BBIE,
+    CodeList,
+    CodeValue,
+    DocumentType,
+    UBLSchema,
+)
+
+
+# Document type definition
+_document_type = DocumentType(
+    name={{ repr_str(document_type.name) }},
+    namespace={{ repr_str(document_type.namespace) }},
+    definition={{ repr_str(document_type.definition) }},
+    root_element={{ repr_str(document_type.root_element) }},
+    root_abie=None,  # Set after ABIE definitions
+    version={{ repr_str(document_type.version) }},
+)
+
+
+# ABIE definitions
+{% for name, abie in abies.items() %}
+_{{ to_module_name(name) }}_abie = ABIE(
+    name={{ repr_str(abie.name) }},
+    definition={{ repr_str(abie.definition) }},
+    object_class={{ repr_str(abie.object_class) }},
+    namespace={{ repr_str(abie.namespace) }},
+    bbies=[
+        {% for bbie in abie.bbies %}
+        BBIE(
+            name={{ repr_str(bbie.name) }},
+            definition={{ repr_str(bbie.definition) }},
+            cardinality=Cardinality.{{ bbie.cardinality.name }},
+            data_type={{ repr_str(bbie.data_type) }},
+            representation_term={{ repr_str(bbie.representation_term) }},
+            property_term={{ repr_str(bbie.property_term) }},
+            object_class={{ repr_str(bbie.object_class) }},
+        ),
+        {% endfor %}
+    ],
+    asbies=[
+        {% for asbie in abie.asbies %}
+        ASBIE(
+            name={{ repr_str(asbie.name) }},
+            definition={{ repr_str(asbie.definition) }},
+            cardinality=Cardinality.{{ asbie.cardinality.name }},
+            associated_abie={{ repr_str(asbie.associated_abie) }},
+            property_term={{ repr_str(asbie.property_term) }},
+            object_class={{ repr_str(asbie.object_class) }},
+        ),
+        {% endfor %}
+    ],
+)
+
+{% endfor %}
+
+# Link root ABIE to document type
+_document_type.root_abie = _{{ to_module_name(schema.name) }}_abie
+
+
+# ABIE registry
+_abies = {
+    {% for name, abie in abies.items() %}
+    {{ repr_str(name) }}: _{{ to_module_name(name) }}_abie,
+    {% endfor %}
+}
+
+
+# Code lists
+{% if code_lists %}
+_code_lists = {
+    {% for cl_id, cl in code_lists.items() %}
+    {{ repr_str(cl_id) }}: CodeList(
+        id={{ repr_str(cl.id) }},
+        short_name={{ repr_str(cl.short_name) }},
+        long_name={{ repr_str(cl.long_name) }},
+        version={{ repr_str(cl.version) }},
+        agency_name={{ repr_str(cl.agency_name) }},
+        values=[
+            {% for cv in cl.values %}
+            CodeValue(code={{ repr_str(cv.code) }}, name={{ repr_str(cv.name) }}),
+            {% endfor %}
+        ],
+    ),
+    {% endfor %}
+}
+{% else %}
+_code_lists = {}
+{% endif %}
+
+
+def get_schema() -> UBLSchema:
+    """
+    Get the {{ schema.name }} schema.
+
+    Returns:
+        UBLSchema instance for {{ schema.name }}
+    """
+    return UBLSchema(
+        document_type=_document_type,
+        abies=_abies,
+        code_lists=_code_lists,
+        version={{ repr_str(schema.version) }},
+    )
+
+
+# Schema name for registry lookup
+SCHEMA_NAME = {{ repr_str(schema.name) }}

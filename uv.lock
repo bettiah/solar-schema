@@ -90,6 +90,7 @@ name = "edi-schema"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "jinja2" },
     { name = "lxml" },
 ]
 
@@ -102,7 +103,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "lxml", specifier = ">=6.0.2" }]
+requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "lxml", specifier = ">=6.0.2" },
+]
 
 [package.metadata.requires-dev]
 dev = [
