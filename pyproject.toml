@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Parse and validate EDI documents (X12, EDIFACT) using schema definitions"
 readme = "CLAUDE.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "lxml>=6.0.2",
+]
 
 [dependency-groups]
 dev = [
