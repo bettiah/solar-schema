@@ -25,6 +25,7 @@ try:
         list_schemas,
         schema_exists,
     )
+
     SCHEMAS_GENERATED = True
 except ImportError:
     # Schemas not yet generated - provide stub functions

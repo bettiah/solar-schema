@@ -194,14 +194,16 @@ class UBLValidator:
 
         # Verify document type matches schema
         if document.document_type != schema.name:
-            result.add_error(ParseError(
-                code="DOCUMENT_TYPE_MISMATCH",
-                message=f"Expected {schema.name}, got {document.document_type}",
-                severity=ErrorSeverity.ERROR,
-                category=ErrorCategory.SCHEMA,
-                expected=schema.name,
-                actual=document.document_type,
-            ))
+            result.add_error(
+                ParseError(
+                    code="DOCUMENT_TYPE_MISMATCH",
+                    message=f"Expected {schema.name}, got {document.document_type}",
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.SCHEMA,
+                    expected=schema.name,
+                    actual=document.document_type,
+                )
+            )
             return result
 
         # Create validation context
@@ -292,9 +294,9 @@ def create_validator(
         Configured UBLValidator instance
     """
     # Import here to avoid circular imports
-    from .schema import validate_structure, validate_cardinality
-    from .element import validate_element_types
     from .code import validate_codes
+    from .element import validate_element_types
+    from .schema import validate_cardinality, validate_structure
 
     validator = UBLValidator(schema=schema, levels=levels)
 

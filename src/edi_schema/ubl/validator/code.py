@@ -5,9 +5,8 @@ Validates coded element values against code lists.
 """
 
 from ..ast import ErrorCategory, ErrorSeverity, ParsedElement
-from ..models import BBIE, CodeList
+from ..models import BBIE
 from .core import ValidationContext
-
 
 # Map of element names to code list identifiers
 ELEMENT_CODE_LISTS: dict[str, str] = {
@@ -20,29 +19,23 @@ ELEMENT_CODE_LISTS: dict[str, str] = {
     "PricingCurrencyCode": "CurrencyCode",
     "PaymentCurrencyCode": "CurrencyCode",
     "PaymentAlternativeCurrencyCode": "CurrencyCode",
-
     # Country-related elements
     "CountrySubentityCode": "CountryIdentificationCode",
     "IdentificationCode": "CountryIdentificationCode",
-
     # Language elements
     "LanguageID": "LanguageCode",
     "LocaleCode": "LanguageCode",
-
     # Unit-related elements
     "PackSizeNumeric": "UnitOfMeasureCode",
-
     # Payment elements
     "PaymentMeansCode": "PaymentMeansCode",
     "PaymentChannelCode": "ChannelCode",
-
     # Transport elements
     "TransportModeCode": "TransportModeCode",
     "TransportEquipmentTypeCode": "TransportEquipmentTypeCode",
     "HandlingCode": "HandlingCode",
     "PackagingTypeCode": "PackagingTypeCode",
     "LocationTypeCode": "LocationTypeCode",
-
     # Allowance/charge
     "AllowanceChargeReasonCode": "AllowanceChargeReasonCode",
 }

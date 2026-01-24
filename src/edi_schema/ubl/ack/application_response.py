@@ -6,7 +6,7 @@ UBL's equivalent of X12 997 / EDIFACT CONTRL.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from typing import Callable
 from uuid import uuid4
@@ -173,11 +173,13 @@ class ApplicationResponseBuilder:
             # Create line errors
             for line_id, errors in line_errors.items():
                 descriptions = [e.message for e in errors]
-                doc_error.line_errors.append(LineError(
-                    line_id=line_id,
-                    response_code=ResponseCode.REJECTED,
-                    description="; ".join(descriptions),
-                ))
+                doc_error.line_errors.append(
+                    LineError(
+                        line_id=line_id,
+                        response_code=ResponseCode.REJECTED,
+                        description="; ".join(descriptions),
+                    )
+                )
 
             # Add document-level error description if there are non-line errors
             if other_errors:
@@ -249,6 +251,7 @@ class ApplicationResponseBuilder:
             doc_type: Document type name
             doc_type_code: Optional document type code
         """
+
         def configure(ref: ElementBuilder):
             ref.add_element("ID", doc_id, namespace=Namespace.CBC.value)
             if doc_type_code:
@@ -295,10 +298,13 @@ class ApplicationResponseBuilder:
 
     def _add_simple_response(self) -> None:
         """Add a simple DocumentResponse element."""
+
         def configure(dr: ElementBuilder):
             # Response element
             def response(r: ElementBuilder):
-                r.add_element("ResponseCode", self._response_code.value, namespace=Namespace.CBC.value)
+                r.add_element(
+                    "ResponseCode", self._response_code.value, namespace=Namespace.CBC.value
+                )
                 if self._description:
                     r.add_element("Description", self._description, namespace=Namespace.CBC.value)
 
@@ -308,29 +314,43 @@ class ApplicationResponseBuilder:
 
     def _add_document_response(self, doc_error: DocumentError) -> None:
         """Add a DocumentResponse element for an error."""
+
         def configure(dr: ElementBuilder):
             # Response element
             def response(r: ElementBuilder):
-                r.add_element("ResponseCode", doc_error.response_code.value, namespace=Namespace.CBC.value)
+                r.add_element(
+                    "ResponseCode", doc_error.response_code.value, namespace=Namespace.CBC.value
+                )
                 if doc_error.description:
-                    r.add_element("Description", doc_error.description, namespace=Namespace.CBC.value)
+                    r.add_element(
+                        "Description", doc_error.description, namespace=Namespace.CBC.value
+                    )
 
             dr.with_child("Response", response, namespace=Namespace.CAC.value)
 
             # Line responses
             for line_error in doc_error.line_errors:
+
                 def line_response(lr: ElementBuilder):
                     # LineReference
                     def line_ref(lref: ElementBuilder):
-                        lref.add_element("LineID", line_error.line_id, namespace=Namespace.CBC.value)
+                        lref.add_element(
+                            "LineID", line_error.line_id, namespace=Namespace.CBC.value
+                        )
 
                     lr.with_child("LineReference", line_ref, namespace=Namespace.CAC.value)
 
                     # Response
                     def resp(r: ElementBuilder):
-                        r.add_element("ResponseCode", line_error.response_code.value, namespace=Namespace.CBC.value)
+                        r.add_element(
+                            "ResponseCode",
+                            line_error.response_code.value,
+                            namespace=Namespace.CBC.value,
+                        )
                         if line_error.description:
-                            r.add_element("Description", line_error.description, namespace=Namespace.CBC.value)
+                            r.add_element(
+                                "Description", line_error.description, namespace=Namespace.CBC.value
+                            )
 
                     lr.with_child("Response", resp, namespace=Namespace.CAC.value)
 
@@ -356,7 +376,10 @@ def _extract_line_id(error: ParseError) -> str | None:
     if error.xpath:
         # Look for line patterns in xpath
         import re
-        match = re.search(r"(Invoice|Order|Credit|Debit|Despatch|Receipt)Line\[(\d+)\]", error.xpath)
+
+        match = re.search(
+            r"(Invoice|Order|Credit|Debit|Despatch|Receipt)Line\[(\d+)\]", error.xpath
+        )
         if match:
             return match.group(2)
 

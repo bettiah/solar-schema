@@ -2,16 +2,12 @@
 Tests for UBL schema models.
 """
 
-import pytest
-
 from edi_schema.ubl.enums import Cardinality, ComponentType, Namespace, RepresentationTerm
 from edi_schema.ubl.models import (
     ABIE,
     ASBIE,
     BBIE,
     Attribute,
-    CACElement,
-    CBCElement,
     CodeList,
     CodeValue,
     DocumentType,

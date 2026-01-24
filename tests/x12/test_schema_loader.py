@@ -7,6 +7,7 @@ Tests loading complete transaction set schemas from the schema definition files.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.enums import (
     DataElementType,
     RequirementDesignator,
@@ -185,9 +186,9 @@ class TestSchemaContent:
         for elem_id, element in schema.elements.items():
             assert element.data_type is not None, f"Element {elem_id} has no data type"
             assert element.min_length > 0, f"Element {elem_id} has invalid min_length"
-            assert (
-                element.max_length >= element.min_length
-            ), f"Element {elem_id} has invalid length range"
+            assert element.max_length >= element.min_length, (
+                f"Element {elem_id} has invalid length range"
+            )
 
     def test_transaction_set_areas(self, x12_schema_path: Path):
         """Test that transaction sets have all three areas."""

@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
 from edi_schema.edifact.ast import (
     ErrorCategory,
     ErrorSeverity,

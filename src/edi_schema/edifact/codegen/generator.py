@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import jinja2
+
 from edi_schema.edifact.models import SegmentGroup, SegmentRef
 from edi_schema.edifact.schema.registry import EdifactRegistry
 

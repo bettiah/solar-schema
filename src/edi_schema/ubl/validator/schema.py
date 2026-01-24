@@ -6,9 +6,9 @@ Validates document structure and cardinality against UBL schema.
 
 from collections import Counter
 
-from ..ast import ErrorCategory, ParsedElement, SourcePosition
+from ..ast import ErrorCategory, ParsedElement
 from ..enums import Cardinality
-from ..models import ABIE, ASBIE, BBIE
+from ..models import ABIE
 from .core import ValidationContext
 
 

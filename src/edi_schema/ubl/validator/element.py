@@ -10,10 +10,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Callable
 
 from ..ast import ErrorCategory, ErrorSeverity, ParsedElement
-from ..enums import RepresentationTerm
 from ..models import BBIE
 from .core import ValidationContext
-
 
 # Type alias for type validators
 TypeValidator = Callable[[str, ParsedElement, ValidationContext], bool]

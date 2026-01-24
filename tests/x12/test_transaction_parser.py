@@ -5,6 +5,7 @@ Tests for X12 Transaction Parser.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.ast import (
     LoopInstance,
     ParsedSegment,

@@ -13,6 +13,7 @@ Tests cover:
 from pathlib import Path
 
 import pytest
+
 from edi_schema.edifact.schema_parsers import (
     list_messages,
     parse_edcd,

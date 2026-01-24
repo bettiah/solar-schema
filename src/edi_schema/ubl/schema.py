@@ -4,15 +4,14 @@ UBL Schema Loader.
 Provides runtime loading of UBL schemas from XSD files.
 """
 
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 from .models import (
     ABIE,
     CACElement,
     CBCElement,
     CodeList,
-    DocumentType,
     QualifiedDataType,
     UBLSchema,
     UnqualifiedDataType,
@@ -23,7 +22,6 @@ from .schema_parsers import (
     parse_cac_elements,
     parse_cac_types,
     parse_cbc_elements,
-    parse_cbc_types,
     parse_document_schema,
     parse_qdt,
     parse_udt,

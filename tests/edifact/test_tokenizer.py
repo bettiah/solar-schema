@@ -45,7 +45,7 @@ class TestUnaDetection:
     """Tests for UNA segment detection and delimiter extraction."""
 
     def test_detect_standard_una(self):
-        content = "UNA:+.? '" "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "UNZ+1+1'"
+        content = "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'UNZ+1+1'"
         result = tokenize(content)
 
         assert result.has_una
@@ -57,7 +57,7 @@ class TestUnaDetection:
 
     def test_detect_custom_una(self):
         # Using custom delimiters: # for component, | for element, ~ for segment
-        content = "UNA#|.?~'" "UNB|UNOC#3|SENDER|RECEIVER|231031#1430|1'" "UNZ|1|1'"
+        content = "UNA#|.?~'UNB|UNOC#3|SENDER|RECEIVER|231031#1430|1'UNZ|1|1'"
         result = tokenize(content)
 
         assert result.has_una
@@ -66,7 +66,7 @@ class TestUnaDetection:
         assert result.delimiters.segment == "'"
 
     def test_default_delimiters_without_una(self):
-        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "UNZ+1+1'"
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'UNZ+1+1'"
         result = tokenize(content)
 
         assert not result.has_una
@@ -106,7 +106,7 @@ class TestSegmentParsing:
     """Tests for segment parsing."""
 
     def test_parse_simple_segment(self):
-        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+12345'" "BGM+380+INV001+9'" "UNZ+1+12345'"
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+12345'BGM+380+INV001+9'UNZ+1+12345'"
         result = tokenize(content)
 
         # Find BGM segment
@@ -118,7 +118,7 @@ class TestSegmentParsing:
         assert bgm.get_element_value(3) == "9"
 
     def test_parse_segment_with_composite(self):
-        content = "UNB+UNOC:3+SENDER:14+RECEIVER:ZZ+231031:1430+12345'" "UNZ+1+12345'"
+        content = "UNB+UNOC:3+SENDER:14+RECEIVER:ZZ+231031:1430+12345'UNZ+1+12345'"
         result = tokenize(content)
 
         unb = next((s for s in result.segments if s.tag == "UNB"), None)
@@ -141,9 +141,7 @@ class TestSegmentParsing:
         assert elem2.get_component(2) == "14"
 
     def test_parse_segment_with_empty_elements(self):
-        content = (
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+12345'" "NAD+BY+++BUYER NAME'" "UNZ+1+12345'"
-        )
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+12345'NAD+BY+++BUYER NAME'UNZ+1+12345'"
         result = tokenize(content)
 
         nad = next((s for s in result.segments if s.tag == "NAD"), None)
@@ -192,10 +190,7 @@ class TestReleaseCharacter:
     def test_escaped_element_separator(self):
         """Test ?+ → literal +"""
         content = (
-            "UNA:+.? '"
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "FTX+AAA+++VALUE?+WITH?+PLUS'"
-            "UNZ+1+1'"
+            "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'FTX+AAA+++VALUE?+WITH?+PLUS'UNZ+1+1'"
         )
         result = tokenize(content)
 
@@ -209,10 +204,7 @@ class TestReleaseCharacter:
     def test_escaped_component_separator(self):
         """Test ?: → literal :"""
         content = (
-            "UNA:+.? '"
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "FTX+AAA+++TIME?:12?:30'"
-            "UNZ+1+1'"
+            "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'FTX+AAA+++TIME?:12?:30'UNZ+1+1'"
         )
         result = tokenize(content)
 
@@ -225,10 +217,7 @@ class TestReleaseCharacter:
     def test_escaped_segment_terminator(self):
         """Test ?' → literal '"""
         content = (
-            "UNA:+.? '"
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "FTX+AAA+++IT?'S A TEST'"
-            "UNZ+1+1'"
+            "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'FTX+AAA+++IT?'S A TEST'UNZ+1+1'"
         )
         result = tokenize(content)
 
@@ -240,9 +229,7 @@ class TestReleaseCharacter:
 
     def test_escaped_release_character(self):
         """Test ?? → literal ?"""
-        content = (
-            "UNA:+.? '" "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "FTX+AAA+++WHAT??'" "UNZ+1+1'"
-        )
+        content = "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'FTX+AAA+++WHAT??'UNZ+1+1'"
         result = tokenize(content)
 
         ftx = next((s for s in result.segments if s.tag == "FTX"), None)
@@ -254,10 +241,7 @@ class TestReleaseCharacter:
     def test_multiple_escapes(self):
         """Test multiple escape sequences in one value."""
         content = (
-            "UNA:+.? '"
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "FTX+AAA+++A?+B?:C?'D??E'"
-            "UNZ+1+1'"
+            "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'FTX+AAA+++A?+B?:C?'D??E'UNZ+1+1'"
         )
         result = tokenize(content)
 
@@ -269,9 +253,7 @@ class TestReleaseCharacter:
 
     def test_escaped_in_composite(self):
         """Test escape sequences within composite elements."""
-        content = (
-            "UNA:+.? '" "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "RFF+ON?:123:EXTRA'" "UNZ+1+1'"
-        )
+        content = "UNA:+.? 'UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'RFF+ON?:123:EXTRA'UNZ+1+1'"
         result = tokenize(content)
 
         rff = next((s for s in result.segments if s.tag == "RFF"), None)
@@ -329,12 +311,7 @@ class TestLineEndingHandling:
         assert len(result.segments) == 4
 
     def test_no_line_endings(self):
-        content = (
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "UNH+1+INVOIC:D:23A:UN'"
-            "UNT+2+1'"
-            "UNZ+1+1'"
-        )
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'UNH+1+INVOIC:D:23A:UN'UNT+2+1'UNZ+1+1'"
         result = tokenize(content)
 
         assert not result.has_fatal_errors()
@@ -372,12 +349,7 @@ class TestErrorRecovery:
         assert "UNZ" in tags
 
     def test_statistics_tracking(self):
-        content = (
-            "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'"
-            "UNH+1+INVOIC:D:23A:UN'"
-            "UNT+2+1'"
-            "UNZ+1+1'"
-        )
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'UNH+1+INVOIC:D:23A:UN'UNT+2+1'UNZ+1+1'"
         result = tokenize(content)
 
         assert result.total_bytes == len(content)
@@ -385,7 +357,7 @@ class TestErrorRecovery:
         assert result.element_count > 0
 
     def test_component_count(self):
-        content = "UNB+UNOC:3+SENDER:14+RECEIVER:ZZ+231031:1430+1'" "UNZ+1+1'"
+        content = "UNB+UNOC:3+SENDER:14+RECEIVER:ZZ+231031:1430+1'UNZ+1+1'"
         result = tokenize(content)
 
         # UNB has several composite elements
@@ -396,7 +368,7 @@ class TestSourcePositionTracking:
     """Tests for source position tracking."""
 
     def test_segment_positions(self):
-        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "UNH+1+INVOIC:D:23A:UN'" "UNZ+1+1'"
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'UNH+1+INVOIC:D:23A:UN'UNZ+1+1'"
         result = tokenize(content)
 
         # UNB should be at position 0
@@ -409,7 +381,7 @@ class TestSourcePositionTracking:
         assert unh.position.offset > 0
 
     def test_element_positions(self):
-        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'" "BGM+380+INV001+9'" "UNZ+1+1'"
+        content = "UNB+UNOC:3+SENDER+RECEIVER+231031:1430+1'BGM+380+INV001+9'UNZ+1+1'"
         result = tokenize(content)
 
         bgm = next(s for s in result.segments if s.tag == "BGM")

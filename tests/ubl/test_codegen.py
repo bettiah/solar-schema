@@ -101,10 +101,7 @@ class TestUBLSchemaGenerator:
         assert UBLSchemaGenerator._to_module_name("Invoice") == "invoice"
         assert UBLSchemaGenerator._to_module_name("CreditNote") == "credit_note"
         assert UBLSchemaGenerator._to_module_name("DespatchAdvice") == "despatch_advice"
-        assert (
-            UBLSchemaGenerator._to_module_name("ApplicationResponse")
-            == "application_response"
-        )
+        assert UBLSchemaGenerator._to_module_name("ApplicationResponse") == "application_response"
 
     def test_generator_creates_output_dir(self):
         with tempfile.TemporaryDirectory() as tmp:

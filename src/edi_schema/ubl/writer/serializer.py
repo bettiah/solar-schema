@@ -4,13 +4,12 @@ UBL XML Serializer.
 Serializes ParsedDocument/ParsedElement to XML with proper namespace handling.
 """
 
-from io import BytesIO, StringIO
 from typing import TextIO
 
 from lxml import etree
 
 from ..ast import ParsedDocument, ParsedElement
-from ..enums import NAMESPACE_PREFIXES, Namespace
+from ..enums import NAMESPACE_PREFIXES
 
 
 class XMLSerializer:

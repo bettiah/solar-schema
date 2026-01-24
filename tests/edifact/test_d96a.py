@@ -10,6 +10,7 @@ D96A uses a flat file layout different from D23A:
 from pathlib import Path
 
 import pytest
+
 from edi_schema.edifact.schema.registry import EdifactRegistry
 
 # Path to D96A test data

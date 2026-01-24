@@ -8,9 +8,9 @@ Defines document-level schema structures:
 
 from dataclasses import dataclass, field
 
+from .code_list import CodeList
 from .component import ABIE, CACElement, CBCElement
 from .data_type import QualifiedDataType, UnqualifiedDataType
-from .code_list import CodeList
 
 
 @dataclass

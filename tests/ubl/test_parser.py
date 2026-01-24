@@ -2,8 +2,9 @@
 Tests for UBL document parser.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from edi_schema.ubl.ast import (
     ErrorCategory,
@@ -16,8 +17,7 @@ from edi_schema.ubl.ast import (
     ParseStatistics,
     SourcePosition,
 )
-from edi_schema.ubl.parser import parse, parse_with_schema, parse_xml, XMLParseError
-
+from edi_schema.ubl.parser import parse, parse_with_schema, parse_xml
 
 # Sample UBL Invoice XML
 SAMPLE_INVOICE_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -215,11 +215,13 @@ class TestParseResult:
             root=root,
         )
         result = ParseResult(document=doc)
-        result.add_error(ParseError(
-            code="WARN",
-            message="Warning",
-            severity=ErrorSeverity.WARNING,
-        ))
+        result.add_error(
+            ParseError(
+                code="WARN",
+                message="Warning",
+                severity=ErrorSeverity.WARNING,
+            )
+        )
         assert result.is_valid  # Warnings don't invalidate
         assert result.has_warnings
 
@@ -301,8 +303,7 @@ class TestDocumentParser:
 UBL_XSD_PATH = Path("/Users/me/Downloads/edi/ubl/UBL-2.5/xsd")
 
 pytestmark_schema = pytest.mark.skipif(
-    not UBL_XSD_PATH.exists(),
-    reason="UBL schema files not available"
+    not UBL_XSD_PATH.exists(), reason="UBL schema files not available"
 )
 
 

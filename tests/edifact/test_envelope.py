@@ -165,8 +165,7 @@ class TestInterchangeParsing:
     def test_multiple_interchanges(self):
         """Test parsing multiple interchanges in one document."""
         data = (
-            "UNB+UNOA:3+S1+R1+231031:1430+111'UNZ+0+111'"
-            "UNB+UNOA:3+S2+R2+231031:1431+222'UNZ+0+222'"
+            "UNB+UNOA:3+S1+R1+231031:1430+111'UNZ+0+111'UNB+UNOA:3+S2+R2+231031:1431+222'UNZ+0+222'"
         )
         result = parse_edifact(data)
         assert len(result.interchanges) == 2
@@ -491,11 +490,7 @@ class TestErrorRecovery:
 
     def test_recovery_missing_all_trailers(self):
         """Test recovery when all trailers are missing."""
-        data = (
-            "UNB+UNOA:3+SENDER+RECEIVER+231031:1430+12345'"
-            "UNH+1+INVOIC:D:23A:UN'"
-            "BGM+380+INV001'"
-        )
+        data = "UNB+UNOA:3+SENDER+RECEIVER+231031:1430+12345'UNH+1+INVOIC:D:23A:UN'BGM+380+INV001'"
         result = parse_edifact(data)
         # Should have errors for missing UNT and UNZ
         assert any(e.code == "ENV30" for e in result.errors)  # Missing UNT
@@ -722,7 +717,7 @@ class TestEdgeCases:
     def test_special_characters_in_values(self):
         """Test special characters escaped in values."""
         # Using release character ? to escape
-        data = "UNA:+.? '" "UNB+UNOA:3+SEND?+ER+RECEIVER+231031:1430+12345'" "UNZ+0+12345'"
+        data = "UNA:+.? 'UNB+UNOA:3+SEND?+ER+RECEIVER+231031:1430+12345'UNZ+0+12345'"
         result = parse_edifact(data)
         # The +ER should be part of sender_id due to escape
         assert result.interchanges[0].sender_id == "SEND+ER"

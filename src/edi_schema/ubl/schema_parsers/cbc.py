@@ -8,8 +8,8 @@ from pathlib import Path
 
 from lxml import etree
 
-from ..models import BBIE, CBCElement
 from ..enums import Cardinality
+from ..models import BBIE, CBCElement
 from .base import (
     NSMAP,
     get_complex_types,

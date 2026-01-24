@@ -7,17 +7,14 @@ import pytest
 from edi_schema.ubl.ack import (
     ApplicationResponseBuilder,
     DocumentError,
-    generate_application_response,
     LineError,
     ResponseCode,
+    generate_application_response,
 )
 from edi_schema.ubl.ast import (
     ErrorCategory,
-    ParsedDocument,
-    ParsedElement,
     ParseError,
 )
-from edi_schema.ubl.enums import Namespace
 from edi_schema.ubl.validator import ValidationResult
 from edi_schema.ubl.writer import DocumentBuilder, party
 
@@ -188,12 +185,7 @@ class TestFromValidation:
     @pytest.fixture
     def valid_invoice(self):
         """Create a valid invoice document."""
-        return (
-            DocumentBuilder("Invoice")
-            .id("INV-001")
-            .issue_date("2024-01-15")
-            .build()
-        )
+        return DocumentBuilder("Invoice").id("INV-001").issue_date("2024-01-15").build()
 
     @pytest.fixture
     def valid_result(self, valid_invoice):
@@ -204,17 +196,21 @@ class TestFromValidation:
     def invalid_result(self, valid_invoice):
         """Create an invalid validation result."""
         result = ValidationResult(document=valid_invoice)
-        result.add_error(ParseError(
-            code="MISSING_ELEMENT",
-            message="Required element missing",
-            category=ErrorCategory.SCHEMA,
-        ))
-        result.add_error(ParseError(
-            code="INVALID_FORMAT",
-            message="Invalid date format",
-            category=ErrorCategory.ELEMENT,
-            xpath="/Invoice/InvoiceLine[1]/Amount",
-        ))
+        result.add_error(
+            ParseError(
+                code="MISSING_ELEMENT",
+                message="Required element missing",
+                category=ErrorCategory.SCHEMA,
+            )
+        )
+        result.add_error(
+            ParseError(
+                code="INVALID_FORMAT",
+                message="Invalid date format",
+                category=ErrorCategory.ELEMENT,
+                xpath="/Invoice/InvoiceLine[1]/Amount",
+            )
+        )
         return result
 
     def test_from_valid_result(self, valid_result, valid_invoice):
@@ -366,25 +362,24 @@ class TestIntegration:
     def test_rejection_with_errors(self):
         """Test generating rejection response with errors."""
         # Build a document
-        doc = (
-            DocumentBuilder("Invoice")
-            .id("INV-BAD-001")
-            .issue_date("2024-01-15")
-            .build()
-        )
+        doc = DocumentBuilder("Invoice").id("INV-BAD-001").issue_date("2024-01-15").build()
 
         # Create validation result with errors
         result = ValidationResult(document=doc)
-        result.add_error(ParseError(
-            code="MISSING_SUPPLIER",
-            message="AccountingSupplierParty is required",
-            category=ErrorCategory.SCHEMA,
-        ))
-        result.add_error(ParseError(
-            code="MISSING_CUSTOMER",
-            message="AccountingCustomerParty is required",
-            category=ErrorCategory.SCHEMA,
-        ))
+        result.add_error(
+            ParseError(
+                code="MISSING_SUPPLIER",
+                message="AccountingSupplierParty is required",
+                category=ErrorCategory.SCHEMA,
+            )
+        )
+        result.add_error(
+            ParseError(
+                code="MISSING_CUSTOMER",
+                message="AccountingCustomerParty is required",
+                category=ErrorCategory.SCHEMA,
+            )
+        )
 
         # Generate response
         response_xml = generate_application_response(result, doc)

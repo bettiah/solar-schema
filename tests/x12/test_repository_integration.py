@@ -8,6 +8,7 @@ the SchemaRepository interface.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.core.repository import SchemaRepository
 from edi_schema.x12.schema import X12Schema
 

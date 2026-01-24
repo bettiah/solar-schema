@@ -151,9 +151,7 @@ class ParsedElement:
             result["value"] = self.value
 
         if self.attributes:
-            result["attributes"] = {
-                attr.name: attr.value for attr in self.attributes
-            }
+            result["attributes"] = {attr.name: attr.value for attr in self.attributes}
 
         if self.children:
             result["children"] = [child.to_dict() for child in self.children]

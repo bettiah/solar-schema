@@ -5,6 +5,7 @@ Tests the pre-generated schema modules and the GeneratedEdifactSchemaLoader.
 """
 
 import pytest
+
 from edi_schema.edifact.models import (
     Composite,
     DataElement,

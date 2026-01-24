@@ -11,6 +11,7 @@ Tests all sample files in tests/fixtures/edifact_samples/ for:
 from pathlib import Path
 
 import pytest
+
 from edi_schema.edifact.ast import (
     ErrorSeverity,
     InterchangeInstance,

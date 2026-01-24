@@ -16,7 +16,6 @@ from ..ast import (
     ParseResult,
     SourcePosition,
 )
-from ..enums import Namespace
 from ..models import ABIE, ASBIE, BBIE, UBLSchema
 from ..schema import UBLSchemaLoader
 from .xml_parser import XMLParseError, get_document_type, get_ubl_version, parse_xml
@@ -41,13 +40,15 @@ def parse(
     try:
         root, nsmap = parse_xml(source, recover=recover)
     except XMLParseError as e:
-        result.add_error(ParseError(
-            code="XML_PARSE_ERROR",
-            message=str(e),
-            severity=ErrorSeverity.FATAL,
-            category=ErrorCategory.STRUCTURAL,
-            position=SourcePosition(line=e.line, column=e.column),
-        ))
+        result.add_error(
+            ParseError(
+                code="XML_PARSE_ERROR",
+                message=str(e),
+                severity=ErrorSeverity.FATAL,
+                category=ErrorCategory.STRUCTURAL,
+                position=SourcePosition(line=e.line, column=e.column),
+            )
+        )
         return result
 
     # Create document
@@ -91,14 +92,16 @@ def parse_with_schema(
 
     # Verify document type matches schema
     if result.document.document_type != schema.name:
-        result.add_error(ParseError(
-            code="DOCUMENT_TYPE_MISMATCH",
-            message=f"Expected {schema.name}, got {result.document.document_type}",
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.SCHEMA,
-            expected=schema.name,
-            actual=result.document.document_type,
-        ))
+        result.add_error(
+            ParseError(
+                code="DOCUMENT_TYPE_MISMATCH",
+                message=f"Expected {schema.name}, got {result.document.document_type}",
+                severity=ErrorSeverity.ERROR,
+                category=ErrorCategory.SCHEMA,
+                expected=schema.name,
+                actual=result.document.document_type,
+            )
+        )
         return result
 
     # Bind schema to elements
@@ -207,11 +210,13 @@ def parse_file(
             # Re-parse with schema binding
             return parse_with_schema(path, schema)
         except FileNotFoundError:
-            result.add_error(ParseError(
-                code="SCHEMA_NOT_FOUND",
-                message=f"Schema not found for {result.document.document_type}",
-                severity=ErrorSeverity.WARNING,
-                category=ErrorCategory.SCHEMA,
-            ))
+            result.add_error(
+                ParseError(
+                    code="SCHEMA_NOT_FOUND",
+                    message=f"Schema not found for {result.document.document_type}",
+                    severity=ErrorSeverity.WARNING,
+                    category=ErrorCategory.SCHEMA,
+                )
+            )
 
     return result

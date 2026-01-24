@@ -4,8 +4,9 @@ Tests for UBL schema parsers.
 These tests require the UBL 2.5 schema files to be present at the expected location.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Schema file paths
 UBL_XSD_PATH = Path("/Users/me/Downloads/edi/ubl/UBL-2.5/xsd")
@@ -14,10 +15,7 @@ UBL_MAINDOC_PATH = UBL_XSD_PATH / "maindoc"
 UBL_CODE_LIST_PATH = UBL_XSD_PATH.parent / "cl" / "gc" / "default"
 
 # Skip all tests if schema files are not available
-pytestmark = pytest.mark.skipif(
-    not UBL_XSD_PATH.exists(),
-    reason="UBL schema files not available"
-)
+pytestmark = pytest.mark.skipif(not UBL_XSD_PATH.exists(), reason="UBL schema files not available")
 
 
 class TestUDTParser:

@@ -5,19 +5,17 @@ Tests for UBL document writer.
 import tempfile
 from pathlib import Path
 
-import pytest
-
+from edi_schema.ubl.ast import ParsedDocument, ParsedElement
+from edi_schema.ubl.enums import Namespace
 from edi_schema.ubl.writer import (
     DocumentBuilder,
     ElementBuilder,
     PartyBuilder,
+    XMLSerializer,
     party,
     serialize,
     serialize_to_file,
-    XMLSerializer,
 )
-from edi_schema.ubl.ast import ParsedDocument, ParsedElement, ParsedAttribute
-from edi_schema.ubl.enums import Namespace
 
 
 class TestElementBuilder:
@@ -145,12 +143,7 @@ class TestDocumentBuilder:
         assert party_elem is not None
 
     def test_build_document(self):
-        doc = (
-            DocumentBuilder("Invoice")
-            .id("INV-001")
-            .issue_date("2024-01-15")
-            .build()
-        )
+        doc = DocumentBuilder("Invoice").id("INV-001").issue_date("2024-01-15").build()
         assert isinstance(doc, ParsedDocument)
         assert doc.document_type == "Invoice"
         assert doc.version == "2.5"
@@ -368,33 +361,41 @@ class TestIntegration:
             .issue_date("2024-01-15")
             .document_currency_code("USD")
             .note("Test invoice")
-            .accounting_supplier_party(lambda p: (
-                party(p)
-                .name("Supplier Corp")
-                .postal_address(
-                    street="123 Main St",
-                    city="Boston",
-                    postal_zone="02101",
-                    country="US",
+            .accounting_supplier_party(
+                lambda p: (
+                    party(p)
+                    .name("Supplier Corp")
+                    .postal_address(
+                        street="123 Main St",
+                        city="Boston",
+                        postal_zone="02101",
+                        country="US",
+                    )
+                    .contact(email="supplier@example.com")
                 )
-                .contact(email="supplier@example.com")
-            ))
-            .accounting_customer_party(lambda p: (
-                party(p)
-                .name("Customer Inc")
-                .postal_address(city="New York", country="US")
-            ))
-            .legal_monetary_total(lambda t: (
-                t.add_element("PayableAmount", "1000.00",
-                             namespace=Namespace.CBC.value,
-                             currencyID="USD")
-            ))
-            .invoice_line(lambda l: (
-                l.add_element("ID", "1", namespace=Namespace.CBC.value)
-                .add_element("LineExtensionAmount", "1000.00",
-                           namespace=Namespace.CBC.value,
-                           currencyID="USD")
-            ))
+            )
+            .accounting_customer_party(
+                lambda p: (
+                    party(p).name("Customer Inc").postal_address(city="New York", country="US")
+                )
+            )
+            .legal_monetary_total(
+                lambda t: (
+                    t.add_element(
+                        "PayableAmount", "1000.00", namespace=Namespace.CBC.value, currencyID="USD"
+                    )
+                )
+            )
+            .invoice_line(
+                lambda l: (
+                    l.add_element("ID", "1", namespace=Namespace.CBC.value).add_element(
+                        "LineExtensionAmount",
+                        "1000.00",
+                        namespace=Namespace.CBC.value,
+                        currencyID="USD",
+                    )
+                )
+            )
             .build()
         )
 
@@ -412,12 +413,7 @@ class TestIntegration:
         """Test that built documents can be parsed back."""
         from edi_schema.ubl.parser import parse
 
-        doc = (
-            DocumentBuilder("Invoice")
-            .id("INV-001")
-            .issue_date("2024-01-15")
-            .build()
-        )
+        doc = DocumentBuilder("Invoice").id("INV-001").issue_date("2024-01-15").build()
 
         xml = serialize(doc)
         result = parse(xml)

@@ -9,14 +9,11 @@ from pathlib import Path
 
 from lxml import etree
 
-from ..models import ABIE, ASBIE, BBIE, CACElement
 from ..enums import Cardinality
+from ..models import ABIE, ASBIE, BBIE, CACElement
 from .base import (
     CAC_NS,
-    CBC_NS,
-    EXT_NS,
     NSMAP,
-    get_attribute,
     get_complex_types,
     get_elements,
     get_sequence_elements,
@@ -193,9 +190,23 @@ def _is_cbc_element(ref: str) -> bool:
     """Check if reference is to a CBC element based on naming conventions."""
     # CBC elements typically end with specific suffixes
     cbc_suffixes = (
-        "ID", "Code", "Date", "Time", "Indicator", "Amount", "Quantity",
-        "Measure", "Percent", "Rate", "Numeric", "Text", "Name", "URI",
-        "Value", "Description", "Note",
+        "ID",
+        "Code",
+        "Date",
+        "Time",
+        "Indicator",
+        "Amount",
+        "Quantity",
+        "Measure",
+        "Percent",
+        "Rate",
+        "Numeric",
+        "Text",
+        "Name",
+        "URI",
+        "Value",
+        "Description",
+        "Note",
     )
     return any(ref.endswith(suffix) for suffix in cbc_suffixes)
 
@@ -217,16 +228,31 @@ def _guess_abie_type(element_name: str, elem: etree._Element) -> str:
 
     # Check for common prefix patterns
     prefixes_to_strip = [
-        "Accounting", "Buyer", "Seller", "Originator", "Delivery", "Despatch",
-        "Payee", "Receiver", "Consignee", "Consignor", "Carrier", "Freight",
-        "Notify", "Final", "Original", "Substitute", "Additional", "Applicable",
+        "Accounting",
+        "Buyer",
+        "Seller",
+        "Originator",
+        "Delivery",
+        "Despatch",
+        "Payee",
+        "Receiver",
+        "Consignee",
+        "Consignor",
+        "Carrier",
+        "Freight",
+        "Notify",
+        "Final",
+        "Original",
+        "Substitute",
+        "Additional",
+        "Applicable",
     ]
 
     result = element_name
     for prefix in prefixes_to_strip:
         if element_name.startswith(prefix) and len(element_name) > len(prefix):
             # Check if remainder is a valid ABIE name (capitalized)
-            remainder = element_name[len(prefix):]
+            remainder = element_name[len(prefix) :]
             if remainder[0].isupper():
                 result = remainder
                 break

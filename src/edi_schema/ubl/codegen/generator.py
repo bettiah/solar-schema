@@ -5,7 +5,6 @@ Generates Python modules from UBL schema definitions for fast loading.
 """
 
 from pathlib import Path
-from typing import TextIO
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
@@ -13,8 +12,6 @@ from ..models import (
     ABIE,
     ASBIE,
     BBIE,
-    CodeList,
-    DocumentType,
     UBLSchema,
 )
 from ..schema import UBLSchemaLoader
@@ -91,6 +88,7 @@ class UBLSchemaGenerator:
         """
         if document_types is None:
             from ..models.document import UBL_DOCUMENT_TYPES
+
             document_types = UBL_DOCUMENT_TYPES
 
         generated: list[Path] = []

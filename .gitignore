@@ -6,3 +6,4 @@
 
 src/edi_schema/x12/schemas/**/v*
 src/edi_schema/edifact/schemas/**/d*
+src/edi_schema/ubl/schemas/**/*

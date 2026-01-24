@@ -89,8 +89,10 @@ class Cardinality(str, Enum):
             Appropriate Cardinality enum value
         """
         is_required = min_occurs >= 1
-        is_unbounded = max_occurs is None or max_occurs == "unbounded" or (
-            isinstance(max_occurs, int) and max_occurs > 1
+        is_unbounded = (
+            max_occurs is None
+            or max_occurs == "unbounded"
+            or (isinstance(max_occurs, int) and max_occurs > 1)
         )
 
         if is_required and is_unbounded:
@@ -195,7 +197,15 @@ class RepresentationTerm(str, Enum):
     @property
     def is_numeric(self) -> bool:
         """Check if this is a numeric type."""
-        return self.value in ("Amount", "Measure", "Numeric", "Percent", "Quantity", "Rate", "Value")
+        return self.value in (
+            "Amount",
+            "Measure",
+            "Numeric",
+            "Percent",
+            "Quantity",
+            "Rate",
+            "Value",
+        )
 
     @property
     def is_temporal(self) -> bool:

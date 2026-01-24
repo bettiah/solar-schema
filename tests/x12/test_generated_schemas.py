@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.enums import (
     DataElementType,
     RequirementDesignator,
@@ -303,16 +304,16 @@ class TestParityWithRuntime:
             # Compare structure length
             runtime_structure = runtime.get_structure()
             generated_structure = generated.get_structure()
-            assert len(generated_structure) == len(
-                runtime_structure
-            ), f"{txn_id} structure length mismatch"
+            assert len(generated_structure) == len(runtime_structure), (
+                f"{txn_id} structure length mismatch"
+            )
 
             # Compare segment IDs
             for i, (gen_seg, run_seg) in enumerate(zip(generated_structure, runtime_structure)):
                 assert gen_seg.segment_id == run_seg.segment_id, f"{txn_id}[{i}] segment mismatch"
-                assert (
-                    gen_seg.requirement == run_seg.requirement
-                ), f"{txn_id}[{i}] requirement mismatch"
+                assert gen_seg.requirement == run_seg.requirement, (
+                    f"{txn_id}[{i}] requirement mismatch"
+                )
                 assert gen_seg.area == run_seg.area, f"{txn_id}[{i}] area mismatch"
 
     def test_segment_parity(self, x12_schema_path: Path):
@@ -328,20 +329,20 @@ class TestParityWithRuntime:
 
             assert generated_seg.id == runtime_seg.id
             assert generated_seg.name == runtime_seg.name
-            assert len(generated_seg.elements) == len(
-                runtime_seg.elements
-            ), f"{seg_id} element count mismatch"
+            assert len(generated_seg.elements) == len(runtime_seg.elements), (
+                f"{seg_id} element count mismatch"
+            )
 
             # Compare elements
             for i, (gen_elem, run_elem) in enumerate(
                 zip(generated_seg.elements, runtime_seg.elements)
             ):
-                assert (
-                    gen_elem.element_id == run_elem.element_id
-                ), f"{seg_id}[{i}] element_id mismatch"
-                assert (
-                    gen_elem.requirement == run_elem.requirement
-                ), f"{seg_id}[{i}] requirement mismatch"
+                assert gen_elem.element_id == run_elem.element_id, (
+                    f"{seg_id}[{i}] element_id mismatch"
+                )
+                assert gen_elem.requirement == run_elem.requirement, (
+                    f"{seg_id}[{i}] requirement mismatch"
+                )
 
     def test_element_parity(self, x12_schema_path: Path):
         """Test that generated elements match runtime-parsed."""
@@ -361,9 +362,9 @@ class TestParityWithRuntime:
             assert generated_elem.max_length == runtime_elem.max_length
 
             # Code values should match
-            assert (
-                generated_elem.code_values == runtime_elem.code_values
-            ), f"{elem_id} code_values mismatch"
+            assert generated_elem.code_values == runtime_elem.code_values, (
+                f"{elem_id} code_values mismatch"
+            )
 
 
 class TestPerformance:

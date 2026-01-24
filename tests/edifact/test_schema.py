@@ -10,6 +10,7 @@ Tests cover:
 from pathlib import Path
 
 import pytest
+
 from edi_schema.edifact.models import SegmentGroup, SegmentRef
 from edi_schema.edifact.schema import (
     EdifactRegistry,

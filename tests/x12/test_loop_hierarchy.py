@@ -3,6 +3,7 @@ Tests for X12 loop hierarchy builder.
 """
 
 import pytest
+
 from edi_schema.x12.parser.loop_hierarchy import (
     LoopMatcher,
     LoopNode,

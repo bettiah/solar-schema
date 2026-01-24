@@ -5,6 +5,7 @@ Tests for X12 Acknowledgment Generation.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.ack import (
     AK1Data,
     AK2Data,

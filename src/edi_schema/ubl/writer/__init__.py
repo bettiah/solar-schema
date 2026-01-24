@@ -13,9 +13,9 @@ from .builder import (
     party,
 )
 from .serializer import (
+    XMLSerializer,
     serialize,
     serialize_to_file,
-    XMLSerializer,
 )
 
 __all__ = [

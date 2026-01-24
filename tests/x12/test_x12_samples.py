@@ -13,6 +13,7 @@ Tests all sample files in tests/fixtures/x12_samples/ for:
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.ack import generate_997
 from edi_schema.x12.ast import (
     ErrorSeverity,
@@ -217,9 +218,9 @@ class TestEnvelopeParsing:
 
             # Check for control number mismatch errors
             envelope_errors = [e for e in result.errors if "control" in e.message.lower()]
-            assert (
-                len(envelope_errors) == 0
-            ), f"{file_path.name} has control number mismatches: {envelope_errors}"
+            assert len(envelope_errors) == 0, (
+                f"{file_path.name} has control number mismatches: {envelope_errors}"
+            )
 
 
 class TestHLHierarchy:
@@ -425,15 +426,15 @@ class TestElementValidation:
             assert interchange is not None
 
             # ISA13 should be numeric
-            assert (
-                interchange.control_number.isdigit()
-            ), f"{name} ISA control number not numeric: {interchange.control_number}"
+            assert interchange.control_number.isdigit(), (
+                f"{name} ISA control number not numeric: {interchange.control_number}"
+            )
 
             # GS06 should be numeric
             for group in interchange.groups:
-                assert (
-                    group.control_number.isdigit()
-                ), f"{name} GS control number not numeric: {group.control_number}"
+                assert group.control_number.isdigit(), (
+                    f"{name} GS control number not numeric: {group.control_number}"
+                )
 
 
 class TestCodeValidation:
@@ -609,9 +610,9 @@ class TestSegmentCounts:
 
                     actual_count = i - st_index + 1
 
-                    assert (
-                        se_count == actual_count
-                    ), f"{file_path.name}: SE count {se_count} != actual {actual_count}"
+                    assert se_count == actual_count, (
+                        f"{file_path.name}: SE count {se_count} != actual {actual_count}"
+                    )
 
 
 class Test997Generation:
@@ -1076,7 +1077,7 @@ class TestSchemaBasedValidation:
             # Sample files should pass schema validation
             # (excluding implementation guide extensions)
             assert len(real_errors) == 0, (
-                f"{file_path.name} has schema errors: " f"{[e.message for e in real_errors]}"
+                f"{file_path.name} has schema errors: {[e.message for e in real_errors]}"
             )
 
     def test_schema_validates_segment_defined(
@@ -1097,6 +1098,6 @@ class TestSchemaBasedValidation:
 
         # No "segment not defined" errors
         undefined_errors = [e for e in validation.errors if "not defined" in e.message]
-        assert (
-            len(undefined_errors) == 0
-        ), f"Unexpected undefined segment errors: {undefined_errors}"
+        assert len(undefined_errors) == 0, (
+            f"Unexpected undefined segment errors: {undefined_errors}"
+        )

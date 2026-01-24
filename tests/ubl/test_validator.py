@@ -11,7 +11,6 @@ from edi_schema.ubl.ast import (
     ParsedDocument,
     ParsedElement,
     ParseError,
-    SourcePosition,
 )
 from edi_schema.ubl.enums import Cardinality
 from edi_schema.ubl.models import (
@@ -24,15 +23,15 @@ from edi_schema.ubl.models import (
     UBLSchema,
 )
 from edi_schema.ubl.validator import (
-    create_validator,
-    get_missing_required_elements,
-    get_unexpected_elements,
     UBLValidator,
     ValidationContext,
     ValidationLevel,
     ValidationResult,
+    create_validator,
+    get_missing_required_elements,
+    get_unexpected_elements,
 )
-from edi_schema.ubl.validator.schema import validate_structure, validate_cardinality
+from edi_schema.ubl.validator.code import validate_codes
 from edi_schema.ubl.validator.element import (
     validate_amount,
     validate_date,
@@ -40,7 +39,7 @@ from edi_schema.ubl.validator.element import (
     validate_indicator,
     validate_time,
 )
-from edi_schema.ubl.validator.code import validate_codes
+from edi_schema.ubl.validator.schema import validate_cardinality, validate_structure
 
 
 # Test fixtures
@@ -155,23 +154,27 @@ class TestValidationResult:
 
     def test_result_with_error(self):
         result = ValidationResult()
-        result.add_error(ParseError(
-            code="TEST",
-            message="Test error",
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.SCHEMA,
-        ))
+        result.add_error(
+            ParseError(
+                code="TEST",
+                message="Test error",
+                severity=ErrorSeverity.ERROR,
+                category=ErrorCategory.SCHEMA,
+            )
+        )
         assert not result.is_valid
         assert len(result.errors) == 1
 
     def test_result_with_warning(self):
         result = ValidationResult()
-        result.add_error(ParseError(
-            code="TEST",
-            message="Test warning",
-            severity=ErrorSeverity.WARNING,
-            category=ErrorCategory.SCHEMA,
-        ))
+        result.add_error(
+            ParseError(
+                code="TEST",
+                message="Test warning",
+                severity=ErrorSeverity.WARNING,
+                category=ErrorCategory.SCHEMA,
+            )
+        )
         assert result.is_valid  # Warnings don't invalidate
         assert result.has_warnings
         assert len(result.warnings) == 1

@@ -5,7 +5,7 @@ Provides a fluent interface for constructing UBL documents.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Self
+from typing import Callable, Self
 
 from ..ast import ParsedAttribute, ParsedDocument, ParsedElement
 from ..enums import Namespace
@@ -37,11 +37,13 @@ class ElementBuilder:
         namespace: str | None = None,
     ) -> Self:
         """Add an attribute to this element."""
-        self.attributes.append(ParsedAttribute(
-            name=name,
-            value=value,
-            namespace=namespace,
-        ))
+        self.attributes.append(
+            ParsedAttribute(
+                name=name,
+                value=value,
+                namespace=namespace,
+            )
+        )
         return self
 
     def add_child(self, child: "ElementBuilder") -> Self:

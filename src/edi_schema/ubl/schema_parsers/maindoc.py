@@ -8,17 +8,15 @@ from pathlib import Path
 
 from lxml import etree
 
+from ..enums import Cardinality
 from ..models import ABIE, ASBIE, BBIE, DocumentType
-from ..enums import Cardinality, Namespace
 from .base import (
     NSMAP,
-    get_attribute,
     get_complex_types,
     get_elements,
     get_sequence_elements,
     parse_type_reference,
     parse_xsd,
-    strip_type_suffix,
 )
 
 

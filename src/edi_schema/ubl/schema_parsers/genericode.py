@@ -69,13 +69,15 @@ def parse_genericode(path: Path) -> CodeList:
             data_type = data_elem.get("Type", "string") if data_elem is not None else "string"
             lang = data_elem.get("Lang") if data_elem is not None else None
 
-            columns.append(CodeListColumn(
-                id=col_id,
-                short_name=short,
-                data_type=data_type,
-                required=use == "required",
-                lang=lang,
-            ))
+            columns.append(
+                CodeListColumn(
+                    id=col_id,
+                    short_name=short,
+                    data_type=data_type,
+                    required=use == "required",
+                    lang=lang,
+                )
+            )
 
     # Parse values
     values: list[CodeValue] = []
@@ -100,15 +102,18 @@ def parse_genericode(path: Path) -> CodeList:
 
             if code:
                 # Store remaining columns as metadata
-                metadata = {k: v for k, v in row_data.items()
-                           if k not in ("code", "name", "description")}
+                metadata = {
+                    k: v for k, v in row_data.items() if k not in ("code", "name", "description")
+                }
 
-                values.append(CodeValue(
-                    code=code,
-                    name=name,
-                    description=description,
-                    metadata=metadata,
-                ))
+                values.append(
+                    CodeValue(
+                        code=code,
+                        name=name,
+                        description=description,
+                        metadata=metadata,
+                    )
+                )
 
     code_list = CodeList(
         id=code_list_id,

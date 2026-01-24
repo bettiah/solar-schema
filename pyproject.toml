@@ -13,15 +13,16 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "ruff>=0.14.14",
     "taskipy>=1.14.1",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/edi_schema"]
+#[build-system]
+#requires = ["hatchling"]
+#build-backend = "hatchling.build"
+#
+#[tool.hatch.build.targets.wheel]
+#packages = ["src/edi_schema"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -30,7 +31,7 @@ addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
@@ -40,6 +41,9 @@ select = ["E", "F", "I", "W"]
   "E501", # Line too long
 ]
 "src/edi_schema/edifact/schemas/*" = [
+  "E501", # Line too long
+]
+"src/edi_schema/ubl/schemas/*" = [
   "E501", # Line too long
 ]
 
@@ -59,8 +63,8 @@ codegen-edifact-d23a = { cmd = "python -m edi_schema.edifact.codegen.generator -
 codegen-edifact-all = { cmd = "task codegen-edifact-d96a && task codegen-edifact-d23a", help = "generate all EDIFACT schemas" }
 
 # UBL code generation
-codegen-ubl-2.5 = { cmd = "python -m edi_schema.ubl.codegen.generator --source /Users/me/Downloads/edi/ubl/UBL-2.5/xsd --output src/edi_schema/ubl/schemas/v2_5 --version 2.5", help = "generate UBL 2.5 schemas" }
-codegen-ubl-all = { cmd = "task codegen-ubl-2.5", help = "generate all UBL schemas" }
+codegen-ubl-25 = { cmd = "python -m edi_schema.ubl.codegen.generator --source /Users/me/Downloads/edi/ubl/UBL-2.5/xsd --output src/edi_schema/ubl/schemas/v2_5 --version 2.5", help = "generate UBL 2.5 schemas" }
+codegen-ubl-all = { cmd = "task codegen-ubl-25", help = "generate all UBL schemas" }
 
 # Generate all schemas
 codegen-all = { cmd = "task codegen-x12-all && task codegen-edifact-all && task codegen-ubl-all", help = "generate all schemas (X12 + EDIFACT + UBL)" }

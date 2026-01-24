@@ -146,11 +146,13 @@ def _convert_element(
             attr_local = attr_name
             attr_ns = None
 
-        attributes.append(ParsedAttribute(
-            name=attr_local,
-            value=attr_value,
-            namespace=attr_ns,
-        ))
+        attributes.append(
+            ParsedAttribute(
+                name=attr_local,
+                value=attr_value,
+                namespace=attr_ns,
+            )
+        )
 
     # Get text content
     value = None

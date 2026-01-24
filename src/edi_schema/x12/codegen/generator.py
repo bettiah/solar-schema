@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import jinja2
+
 from edi_schema.x12.schema import X12SchemaLoader
 
 # Path to templates directory

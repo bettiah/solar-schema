@@ -3,6 +3,7 @@ Tests for EDIFACT AST node types.
 """
 
 import pytest
+
 from edi_schema.edifact.ast import (
     Delimiters,
     ErrorCategory,

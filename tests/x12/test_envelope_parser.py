@@ -5,6 +5,7 @@ Tests for X12 Envelope Parser.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.ast import (
     ErrorSeverity,
     ParseResult,

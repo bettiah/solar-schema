@@ -5,6 +5,7 @@ Tests for X12 Tokenizer.
 from pathlib import Path
 
 import pytest
+
 from edi_schema.x12.ast import (
     ErrorSeverity,
     RawComposite,

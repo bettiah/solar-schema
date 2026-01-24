@@ -3,6 +3,7 @@ Tests for X12 AST node types.
 """
 
 import pytest
+
 from edi_schema.x12.ast import (
     Delimiters,
     ErrorCategory,
