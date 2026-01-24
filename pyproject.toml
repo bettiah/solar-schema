@@ -1,0 +1,60 @@
+[project]
+name = "edi-schema"
+version = "0.1.0"
+description = "Parse and validate EDI documents (X12, EDIFACT) using schema definitions"
+readme = "CLAUDE.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "jinja2>=3.1.6",
+    "taskipy>=1.14.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/edi_schema"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/edi_schema/x12/schemas/*" = [
+  "E501", # Line too long
+]
+"src/edi_schema/edifact/schemas/*" = [
+  "E501", # Line too long
+]
+
+[tool.taskipy.tasks]
+test = { cmd = "python -m pytest", help = "run all tests" }
+test-cov = { cmd = "python -m pytest --cov src/edi_schema --cov-report=term-missing", help = "run tests with coverage" }
+lint = { cmd = "ruff format . && ruff check --fix .", help = "run linters with autofix" }
+
+# X12 code generation
+codegen-x12-005010 = { cmd = "python -m edi_schema.x12.codegen.generator --source /Users/me/Downloads/edi/schema/x12/005010 --output src/edi_schema/x12/schemas/v005010 --version 005010", help = "generate X12 005010 schemas" }
+codegen-x12-004010 = { cmd = "python -m edi_schema.x12.codegen.generator --source /Users/me/Downloads/edi/schema/x12/004010 --output src/edi_schema/x12/schemas/v004010 --version 004010", help = "generate X12 004010 schemas" }
+codegen-x12-all = { cmd = "task codegen-x12-005010 && task codegen-x12-004010", help = "generate all X12 schemas" }
+
+# EDIFACT code generation
+codegen-edifact-d96a = { cmd = "python -m edi_schema.edifact.codegen.generator --source /Users/me/Downloads/edi/schema/edifact/d96a --output src/edi_schema/edifact/schemas/d96a --version d96a", help = "generate EDIFACT D96A schemas" }
+codegen-edifact-d23a = { cmd = "python -m edi_schema.edifact.codegen.generator --source /Users/me/Downloads/edi/schema/edifact/d23a --output src/edi_schema/edifact/schemas/d23a --version d23a", help = "generate EDIFACT D23A schemas" }
+codegen-edifact-all = { cmd = "task codegen-edifact-d96a && task codegen-edifact-d23a", help = "generate all EDIFACT schemas" }
+
+# Generate all schemas
+codegen-all = { cmd = "task codegen-x12-all && task codegen-edifact-all", help = "generate all schemas (X12 + EDIFACT)" }

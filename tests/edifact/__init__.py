@@ -1,0 +1,1 @@
+"""EDIFACT module tests."""

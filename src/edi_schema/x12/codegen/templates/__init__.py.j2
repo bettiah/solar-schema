@@ -1,0 +1,26 @@
+"""
+X12 Schema version {{ version }}.
+
+Auto-generated from X12 schema definition files.
+"""
+
+from .transaction_sets import TRANSACTION_SETS, get_transaction_set
+from .segments import SEGMENTS, get_segment
+from .data_elements import DATA_ELEMENTS, get_data_element
+from .composites import COMPOSITES, get_composite
+from .lookups import ELEMENT_TYPES, SEGMENT_ELEMENTS
+
+__version__ = "{{ version }}"
+
+__all__ = [
+    "TRANSACTION_SETS",
+    "SEGMENTS",
+    "DATA_ELEMENTS",
+    "COMPOSITES",
+    "ELEMENT_TYPES",
+    "SEGMENT_ELEMENTS",
+    "get_transaction_set",
+    "get_segment",
+    "get_data_element",
+    "get_composite",
+]

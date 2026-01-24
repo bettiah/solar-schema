@@ -1,0 +1,49 @@
+"""
+Message definitions for EDIFACT {{ version|upper }}.
+
+Auto-generated. Do not edit manually.
+Messages: {{ message_codes|length }}
+
+Messages are loaded on demand to reduce memory usage.
+"""
+
+import importlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from edi_schema.edifact.models import MessageSpec
+
+# Available message codes
+MESSAGES: set[str] = {
+{% for code in message_codes %}
+    {{ code|repr }},
+{% endfor %}
+}
+
+
+def get_message(message_id: str) -> "MessageSpec | None":
+    """
+    Get a message specification by ID, loading on demand.
+
+    Args:
+        message_id: Message code (e.g., 'ORDERS', 'INVOIC')
+
+    Returns:
+        MessageSpec or None if not found
+    """
+    message_id = message_id.upper()
+    if message_id not in MESSAGES:
+        return None
+
+    # Import the specific message module on demand
+    try:
+        module_name = message_id.lower()
+        module = importlib.import_module(f".{module_name}", __package__)
+        return module.create_message()
+    except ImportError:
+        return None
+
+
+def list_messages() -> list[str]:
+    """List all available message IDs."""
+    return sorted(MESSAGES)

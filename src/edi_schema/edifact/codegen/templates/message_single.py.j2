@@ -1,0 +1,48 @@
+"""
+{{ msg.code }} - {{ msg.name }}
+
+Auto-generated. Do not edit manually.
+"""
+
+from edi_schema.edifact.models import MessageSpec, SegmentRef, SegmentGroup
+
+{% macro render_structure_item(item, indent=1) %}
+{% set prefix = "    " * indent %}
+{% if item.__class__.__name__ == 'SegmentRef' %}
+{{ prefix }}SegmentRef(
+{{ prefix }}    position={{ item.position }},
+{{ prefix }}    segment_tag={{ item.segment_tag|repr }},
+{{ prefix }}    mandatory={{ item.mandatory }},
+{{ prefix }}    max_repeat={{ item.max_repeat }},
+{{ prefix }}    definition={{ item.definition|repr }},
+{{ prefix }}),
+{% elif item.__class__.__name__ == 'SegmentGroup' %}
+{{ prefix }}SegmentGroup(
+{{ prefix }}    number={{ item.number }},
+{{ prefix }}    mandatory={{ item.mandatory }},
+{{ prefix }}    max_repeat={{ item.max_repeat }},
+{{ prefix }}    definition={{ item.definition|repr }},
+{{ prefix }}    children=[
+{% for child in item.children %}
+{{ render_structure_item(child, indent + 2) }}
+{% endfor %}
+{{ prefix }}    ],
+{{ prefix }}),
+{% endif %}
+{% endmacro %}
+
+def create_message() -> MessageSpec:
+    """Create {{ msg.code }} message specification."""
+    return MessageSpec(
+        code={{ msg.code|repr }},
+        version={{ msg.version|repr }},
+        release={{ msg.release|repr }},
+        name={{ msg.name|repr }},
+        definition={{ msg.definition|repr }},
+        controlling_agency={{ msg.controlling_agency|repr }},
+        structure=[
+{% for item in msg.structure %}
+{{ render_structure_item(item) }}
+{% endfor %}
+        ],
+    )
