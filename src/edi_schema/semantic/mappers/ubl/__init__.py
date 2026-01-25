@@ -9,13 +9,17 @@ from .despatch_advice import UBLDespatchAdviceMapper
 from .invoice import UBLInvoiceMapper
 from .order import UBLOrderMapper
 from .order_response import UBLOrderResponseMapper
+from .quotation import UBLQuotationMapper
+from .receipt_advice import UBLReceiptAdviceMapper
 from .remittance_advice import UBLRemittanceAdviceMapper
 
 __all__ = [
     "UBLOrderMapper",
     "UBLOrderResponseMapper",
+    "UBLQuotationMapper",
     "UBLInvoiceMapper",
     "UBLCreditNoteMapper",
     "UBLRemittanceAdviceMapper",
     "UBLDespatchAdviceMapper",
+    "UBLReceiptAdviceMapper",
 ]

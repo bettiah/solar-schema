@@ -50,6 +50,7 @@ from .monetary import MonetaryTotal
 # Document models
 from .order import Order, OrderLine
 from .order_response import OrderResponse, OrderResponseLine
+from .quotation import Quotation, QuotationLine
 
 # Party models
 from .party import (
@@ -182,6 +183,8 @@ __all__ = [
     "OrderLine",
     "OrderResponse",
     "OrderResponseLine",
+    "Quotation",
+    "QuotationLine",
     "Invoice",
     "InvoiceLine",
     "CreditNote",

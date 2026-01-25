@@ -9,13 +9,17 @@ from .despatch_advice import X12DespatchAdviceMapper
 from .invoice import X12InvoiceMapper
 from .order import X12OrderMapper
 from .order_response import X12OrderResponseMapper
+from .quotation import X12QuotationMapper
+from .receipt_advice import X12ReceiptAdviceMapper
 from .remittance_advice import X12RemittanceAdviceMapper
 
 __all__ = [
     "X12OrderMapper",
     "X12OrderResponseMapper",
+    "X12QuotationMapper",
     "X12InvoiceMapper",
     "X12CreditNoteMapper",
     "X12RemittanceAdviceMapper",
     "X12DespatchAdviceMapper",
+    "X12ReceiptAdviceMapper",
 ]
