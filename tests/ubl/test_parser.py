@@ -2,7 +2,6 @@
 Tests for UBL document parser.
 """
 
-from pathlib import Path
 
 import pytest
 

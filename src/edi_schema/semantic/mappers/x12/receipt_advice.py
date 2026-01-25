@@ -293,21 +293,13 @@ class X12ReceiptAdviceMapper(SemanticMapper[ReceiptAdvice]):
 
         # N1 loops for parties
         if model.despatch_supplier_party:
-            segments.extend(
-                self._build_party_segments("SF", model.despatch_supplier_party.party)
-            )
+            segments.extend(self._build_party_segments("SF", model.despatch_supplier_party.party))
         if model.delivery_customer_party:
-            segments.extend(
-                self._build_party_segments("ST", model.delivery_customer_party.party)
-            )
+            segments.extend(self._build_party_segments("ST", model.delivery_customer_party.party))
         if model.buyer_customer_party:
-            segments.extend(
-                self._build_party_segments("BY", model.buyer_customer_party.party)
-            )
+            segments.extend(self._build_party_segments("BY", model.buyer_customer_party.party))
         if model.seller_supplier_party:
-            segments.extend(
-                self._build_party_segments("SE", model.seller_supplier_party.party)
-            )
+            segments.extend(self._build_party_segments("SE", model.seller_supplier_party.party))
 
         # RCD loops for line items
         for line in model.receipt_lines:

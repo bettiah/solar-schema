@@ -20,7 +20,7 @@ from edi_schema.x12.ast import (
     ParsedSegment,
     RawSegment,
 )
-from edi_schema.x12.parser import parse_file, parse
+from edi_schema.x12.parser import parse, parse_file
 from edi_schema.x12.schemas import GeneratedX12SchemaLoader
 from edi_schema.x12.validator import (
     ValidationLevel,
@@ -259,9 +259,7 @@ class TestHLHierarchy:
         hl_transactions = {"837", "270", "271", "276", "277", "278"}
         if txn.transaction_id in hl_transactions:
             # Should have LoopInstance items for HL-based transactions
-            loop_instances = [
-                item for item in txn.content if isinstance(item, LoopInstance)
-            ]
+            loop_instances = [item for item in txn.content if isinstance(item, LoopInstance)]
             assert len(loop_instances) > 0, (
                 f"{x12_file.stem}: Expected LoopInstances for HL-based transaction"
             )
@@ -398,9 +396,7 @@ class TestSpecificSamples:
         assert txn.schema is not None  # Schema should be attached
 
         # Content should have LoopInstances (parsed with schema)
-        loop_instances = [
-            item for item in txn.content if isinstance(item, LoopInstance)
-        ]
+        loop_instances = [item for item in txn.content if isinstance(item, LoopInstance)]
         assert len(loop_instances) > 0
 
         parsed = interchange_to_dict(result.interchange)
@@ -451,9 +447,7 @@ class TestSpecificSamples:
         assert txn.transaction_id == "270"
 
         # 270 uses HL hierarchy
-        loop_instances = [
-            item for item in txn.content if isinstance(item, LoopInstance)
-        ]
+        loop_instances = [item for item in txn.content if isinstance(item, LoopInstance)]
         assert len(loop_instances) > 0
 
         parsed = interchange_to_dict(result.interchange)

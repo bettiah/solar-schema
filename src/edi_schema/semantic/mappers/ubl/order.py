@@ -202,9 +202,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
 
         # Buyer
         if model.buyer_customer_party:
-            order["cac:BuyerCustomerParty"] = self._build_customer_party(
-                model.buyer_customer_party
-            )
+            order["cac:BuyerCustomerParty"] = self._build_customer_party(model.buyer_customer_party)
 
         # Seller
         if model.seller_supplier_party:
@@ -214,9 +212,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
 
         # Delivery
         if model.delivery:
-            order["cac:Delivery"] = [
-                self._build_delivery(d) for d in model.delivery
-            ]
+            order["cac:Delivery"] = [self._build_delivery(d) for d in model.delivery]
 
         # Payment terms
         if model.payment_terms:
@@ -226,9 +222,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
 
         # Tax total
         if model.tax_total:
-            order["cac:TaxTotal"] = [
-                self._build_tax_total(tt) for tt in model.tax_total
-            ]
+            order["cac:TaxTotal"] = [self._build_tax_total(tt) for tt in model.tax_total]
 
         # Anticipated monetary total
         if model.anticipated_monetary_total:
@@ -237,9 +231,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
             )
 
         # Order lines
-        order["cac:OrderLine"] = [
-            self._build_order_line(line) for line in model.order_lines
-        ]
+        order["cac:OrderLine"] = [self._build_order_line(line) for line in model.order_lines]
 
         return doc
 
@@ -361,15 +353,9 @@ class UBLOrderMapper(SemanticMapper[Order]):
         if qty_val is not None:
             delivery.quantity = Quantity(value=qty_val, unit_code=qty_unit or "EA")
 
-        delivery.actual_delivery_date = parse_date(
-            get_child_value(elem, "ActualDeliveryDate")
-        )
-        delivery.actual_delivery_time = parse_time(
-            get_child_value(elem, "ActualDeliveryTime")
-        )
-        delivery.latest_delivery_date = parse_date(
-            get_child_value(elem, "LatestDeliveryDate")
-        )
+        delivery.actual_delivery_date = parse_date(get_child_value(elem, "ActualDeliveryDate"))
+        delivery.actual_delivery_time = parse_time(get_child_value(elem, "ActualDeliveryTime"))
+        delivery.latest_delivery_date = parse_date(get_child_value(elem, "LatestDeliveryDate"))
         delivery.tracking_id = get_child_value(elem, "TrackingID")
 
         # Delivery location
@@ -438,7 +424,9 @@ class UBLOrderMapper(SemanticMapper[Order]):
             taxable_amount=Amount(
                 value=taxable_val or Decimal("0"),
                 currency=taxable_curr or currency,
-            ) if taxable_val else None,
+            )
+            if taxable_val
+            else None,
             tax_amount=Amount(
                 value=tax_val or Decimal("0"),
                 currency=tax_curr or currency,
@@ -473,9 +461,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
 
         line_id = get_child_value(line_item, "ID") or "1"
         qty_val, qty_unit = get_quantity_with_unit(line_item, "Quantity")
-        line_ext_val, line_ext_curr = get_amount_with_currency(
-            line_item, "LineExtensionAmount"
-        )
+        line_ext_val, line_ext_curr = get_amount_with_currency(line_item, "LineExtensionAmount")
 
         # Item
         item_elem = line_item.find_child("Item")
@@ -577,12 +563,11 @@ class UBLOrderMapper(SemanticMapper[Order]):
                 currency=amount_curr or currency,
             ),
             base_quantity=Quantity(value=base_qty, unit_code=base_unit or "EA")
-            if base_qty else None,
+            if base_qty
+            else None,
         )
 
-    def _parse_allowance_charge(
-        self, elem: "ParsedElement", currency: str
-    ) -> AllowanceCharge:
+    def _parse_allowance_charge(self, elem: "ParsedElement", currency: str) -> AllowanceCharge:
         """Parse an AllowanceCharge element."""
         indicator = get_child_value(elem, "ChargeIndicator")
         is_charge = indicator and indicator.lower() == "true"
@@ -596,9 +581,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
                 currency=amount_curr or currency,
             ),
             allowance_charge_reason=get_child_value(elem, "AllowanceChargeReason"),
-            allowance_charge_reason_code=get_child_value(
-                elem, "AllowanceChargeReasonCode"
-            ),
+            allowance_charge_reason_code=get_child_value(elem, "AllowanceChargeReasonCode"),
             multiplier_factor_numeric=parse_decimal(
                 get_child_value(elem, "MultiplierFactorNumeric")
             ),
@@ -641,16 +624,17 @@ class UBLOrderMapper(SemanticMapper[Order]):
         # Party identifications
         if party.party_identifications:
             result["cac:PartyIdentification"] = [
-                {"cbc:ID": {"@schemeID": pi.id.scheme_id, "#text": pi.id.value}
-                 if pi.id.scheme_id else pi.id.value}
+                {
+                    "cbc:ID": {"@schemeID": pi.id.scheme_id, "#text": pi.id.value}
+                    if pi.id.scheme_id
+                    else pi.id.value
+                }
                 for pi in party.party_identifications
             ]
 
         # Party names
         if party.party_names:
-            result["cac:PartyName"] = [
-                {"cbc:Name": pn.name} for pn in party.party_names
-            ]
+            result["cac:PartyName"] = [{"cbc:Name": pn.name} for pn in party.party_names]
 
         # Postal address
         if party.postal_address:
@@ -736,9 +720,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
             }
         }
         if tt.tax_subtotals:
-            result["cac:TaxSubtotal"] = [
-                self._build_tax_subtotal(st) for st in tt.tax_subtotals
-            ]
+            result["cac:TaxSubtotal"] = [self._build_tax_subtotal(st) for st in tt.tax_subtotals]
         return result
 
     def _build_tax_subtotal(self, st: TaxSubtotal) -> dict:
@@ -814,9 +796,7 @@ class UBLOrderMapper(SemanticMapper[Order]):
             ]
 
         if line.tax_total:
-            line_item["cac:TaxTotal"] = [
-                self._build_tax_total(tt) for tt in line.tax_total
-            ]
+            line_item["cac:TaxTotal"] = [self._build_tax_total(tt) for tt in line.tax_total]
 
         return {"cac:LineItem": line_item}
 
@@ -835,7 +815,8 @@ class UBLOrderMapper(SemanticMapper[Order]):
             si = item.standard_item_identification
             result["cac:StandardItemIdentification"] = {
                 "cbc:ID": {"@schemeID": si.id.scheme_id, "#text": si.id.value}
-                if si.id.scheme_id else si.id.value
+                if si.id.scheme_id
+                else si.id.value
             }
         return result
 

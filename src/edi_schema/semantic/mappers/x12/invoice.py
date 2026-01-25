@@ -174,9 +174,12 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
 
         # Calculate line extension total
         line_total = sum(
-            (line.line_extension_amount.value for line in invoice.invoice_lines
-             if line.line_extension_amount),
-            Decimal("0")
+            (
+                line.line_extension_amount.value
+                for line in invoice.invoice_lines
+                if line.line_extension_amount
+            ),
+            Decimal("0"),
         )
         if line_total > 0:
             invoice.legal_monetary_total.line_extension_amount = Amount(
@@ -208,7 +211,8 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
         if model.order_reference:
             big_elements.append(
                 model.order_reference.issue_date.strftime("%Y%m%d")
-                if model.order_reference.issue_date else ""
+                if model.order_reference.issue_date
+                else ""
             )  # BIG03
             big_elements.append(model.order_reference.id)  # BIG04
         else:
@@ -218,20 +222,18 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
 
         # CUR segment if non-USD
         if model.document_currency_code != "USD":
-            segments.append({
-                "tag": "CUR",
-                "elements": ["SE", model.document_currency_code],
-            })
+            segments.append(
+                {
+                    "tag": "CUR",
+                    "elements": ["SE", model.document_currency_code],
+                }
+            )
 
         # N1 loops for parties
         if model.accounting_supplier_party:
-            segments.extend(
-                self._build_n1_loop("SE", model.accounting_supplier_party.party)
-            )
+            segments.extend(self._build_n1_loop("SE", model.accounting_supplier_party.party))
         if model.accounting_customer_party:
-            segments.extend(
-                self._build_n1_loop("BY", model.accounting_customer_party.party)
-            )
+            segments.extend(self._build_n1_loop("BY", model.accounting_customer_party.party))
         if model.payee_party:
             segments.extend(self._build_n1_loop("RI", model.payee_party))
 
@@ -246,10 +248,12 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
             segments.append({"tag": "TDS", "elements": [str(cents)]})
 
         # CTT segment
-        segments.append({
-            "tag": "CTT",
-            "elements": [str(len(model.invoice_lines))],
-        })
+        segments.append(
+            {
+                "tag": "CTT",
+                "elements": [str(len(model.invoice_lines))],
+            }
+        )
 
         return segments
 
@@ -332,9 +336,7 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
         )
 
         if price_value is not None:
-            line.price = Price(
-                price_amount=Amount(value=price_value, currency=currency)
-            )
+            line.price = Price(price_amount=Amount(value=price_value, currency=currency))
 
         # Parse SAC segments
         for sac in find_all_segments_in_loop(it1_loop, "SAC"):
@@ -350,9 +352,7 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
 
         return line
 
-    def _build_item_from_it1(
-        self, it1: "ParsedSegment", it1_loop: "LoopInstance"
-    ) -> Item:
+    def _build_item_from_it1(self, it1: "ParsedSegment", it1_loop: "LoopInstance") -> Item:
         """Build Item from IT1 segment and loop."""
         item = Item()
 
@@ -362,9 +362,7 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
             value = get_element_value(it1, i + 1)
             if qualifier and value:
                 field_type, scheme = map_product_id_qualifier(qualifier)
-                item_id = ItemIdentification(
-                    id=Identifier(value=value, scheme_id=scheme)
-                )
+                item_id = ItemIdentification(id=Identifier(value=value, scheme_id=scheme))
 
                 if field_type == "standard":
                     item.standard_item_identification = item_id
@@ -382,9 +380,7 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
 
         return item
 
-    def _parse_sac_segment(
-        self, sac: "ParsedSegment", currency: str
-    ) -> AllowanceCharge | None:
+    def _parse_sac_segment(self, sac: "ParsedSegment", currency: str) -> AllowanceCharge | None:
         """Parse SAC segment into AllowanceCharge."""
         indicator = get_element_value(sac, 1)
         if not indicator:
@@ -402,9 +398,7 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
             allowance_charge_reason_code=get_element_value(sac, 4),
         )
 
-    def _parse_txi_segment(
-        self, txi: "ParsedSegment", currency: str
-    ) -> TaxTotal | None:
+    def _parse_txi_segment(self, txi: "ParsedSegment", currency: str) -> TaxTotal | None:
         """Parse TXI segment into TaxTotal."""
         tax_type = get_element_value(txi, 1)
         tax_amount = parse_decimal(get_element_value(txi, 2))
@@ -488,10 +482,12 @@ class X12InvoiceMapper(SemanticMapper[Invoice]):
         segments.append({"tag": "IT1", "elements": it1_elements})
 
         if line.item.description:
-            segments.append({
-                "tag": "PID",
-                "elements": ["F", "", "", "", line.item.description],
-            })
+            segments.append(
+                {
+                    "tag": "PID",
+                    "elements": ["F", "", "", "", line.item.description],
+                }
+            )
 
         return segments
 

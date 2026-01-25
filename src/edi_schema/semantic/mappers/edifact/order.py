@@ -166,55 +166,57 @@ class EdifactOrderMapper(SemanticMapper[Order]):
         segments = []
 
         # BGM - Beginning of message
-        segments.append({
-            "tag": "BGM",
-            "elements": [
-                {"value": model.order_type_code or "220"},  # Document type
-                {"components": [model.id]},  # Document ID
-                "9",  # Original
-            ],
-        })
+        segments.append(
+            {
+                "tag": "BGM",
+                "elements": [
+                    {"value": model.order_type_code or "220"},  # Document type
+                    {"components": [model.id]},  # Document ID
+                    "9",  # Original
+                ],
+            }
+        )
 
         # DTM - Document date
-        segments.append({
-            "tag": "DTM",
-            "elements": [
-                {
-                    "components": [
-                        "137",  # Document date qualifier
-                        format_edifact_date(model.issue_date),
-                        "102",  # CCYYMMDD format
-                    ]
-                },
-            ],
-        })
-
-        # CUX - Currency
-        if model.document_currency_code:
-            segments.append({
-                "tag": "CUX",
+        segments.append(
+            {
+                "tag": "DTM",
                 "elements": [
                     {
                         "components": [
-                            "2",  # Reference currency
-                            model.document_currency_code,
-                            "4",  # Invoicing currency
+                            "137",  # Document date qualifier
+                            format_edifact_date(model.issue_date),
+                            "102",  # CCYYMMDD format
                         ]
                     },
                 ],
-            })
+            }
+        )
+
+        # CUX - Currency
+        if model.document_currency_code:
+            segments.append(
+                {
+                    "tag": "CUX",
+                    "elements": [
+                        {
+                            "components": [
+                                "2",  # Reference currency
+                                model.document_currency_code,
+                                "4",  # Invoicing currency
+                            ]
+                        },
+                    ],
+                }
+            )
 
         # NAD - Buyer
         if model.buyer_customer_party:
-            segments.extend(
-                self._build_nad_segments("BY", model.buyer_customer_party.party)
-            )
+            segments.extend(self._build_nad_segments("BY", model.buyer_customer_party.party))
 
         # NAD - Seller
         if model.seller_supplier_party:
-            segments.extend(
-                self._build_nad_segments("SU", model.seller_supplier_party.party)
-            )
+            segments.extend(self._build_nad_segments("SU", model.seller_supplier_party.party))
 
         # LIN groups - Line items
         for i, line in enumerate(model.order_lines, 1):
@@ -224,18 +226,18 @@ class EdifactOrderMapper(SemanticMapper[Order]):
         segments.append({"tag": "UNS", "elements": ["S"]})
 
         # CNT - Control total (line count)
-        segments.append({
-            "tag": "CNT",
-            "elements": [
-                {"components": ["2", str(len(model.order_lines))]},
-            ],
-        })
+        segments.append(
+            {
+                "tag": "CNT",
+                "elements": [
+                    {"components": ["2", str(len(model.order_lines))]},
+                ],
+            }
+        )
 
         return {"message_type": "ORDERS", "segments": segments}
 
-    def _build_party_from_nad(
-        self, nad: "ParsedSegment", group: "SegmentGroupInstance"
-    ) -> Party:
+    def _build_party_from_nad(self, nad: "ParsedSegment", group: "SegmentGroupInstance") -> Party:
         """Build Party from NAD segment and its group."""
         party = Party()
 
@@ -244,9 +246,7 @@ class EdifactOrderMapper(SemanticMapper[Order]):
         party_id_qualifier = get_component_value(nad, 2, 3)
         if party_id:
             party.party_identifications.append(
-                PartyIdentification(
-                    id=Identifier(value=party_id, scheme_id=party_id_qualifier)
-                )
+                PartyIdentification(id=Identifier(value=party_id, scheme_id=party_id_qualifier))
             )
 
         # Party name from NAD C080 or element 4
@@ -375,9 +375,7 @@ class EdifactOrderMapper(SemanticMapper[Order]):
             item_id_type = get_component_value(lin, 3, 2)
             if item_id:
                 field_type, scheme = map_product_id_qualifier(item_id_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=item_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=item_id, scheme_id=scheme))
                 if field_type == "standard":
                     item.standard_item_identification = ident
                 elif field_type == "sellers":
@@ -391,9 +389,7 @@ class EdifactOrderMapper(SemanticMapper[Order]):
             pia_type = get_component_value(pia, 2, 2)
             if pia_id:
                 field_type, scheme = map_product_id_qualifier(pia_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=pia_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=pia_id, scheme_id=scheme))
                 if field_type == "standard" and not item.standard_item_identification:
                     item.standard_item_identification = ident
                 elif field_type == "sellers" and not item.sellers_item_identification:
@@ -412,9 +408,7 @@ class EdifactOrderMapper(SemanticMapper[Order]):
 
         return item
 
-    def _build_nad_segments(
-        self, qualifier: str, party: Party
-    ) -> list[dict]:
+    def _build_nad_segments(self, qualifier: str, party: Party) -> list[dict]:
         """Build NAD segment(s) for a party."""
         segments = []
 
@@ -423,13 +417,15 @@ class EdifactOrderMapper(SemanticMapper[Order]):
         # C082 - Party identification
         if party.party_identifications:
             pi = party.party_identifications[0]
-            elements.append({
-                "components": [
-                    pi.id.value,
-                    "",
-                    pi.id.scheme_id or "92",  # Assigned by buyer
-                ],
-            })
+            elements.append(
+                {
+                    "components": [
+                        pi.id.value,
+                        "",
+                        pi.id.scheme_id or "92",  # Assigned by buyer
+                    ],
+                }
+            )
         else:
             elements.append("")
 
@@ -457,9 +453,7 @@ class EdifactOrderMapper(SemanticMapper[Order]):
 
         return segments
 
-    def _build_line_segments(
-        self, line: OrderLine, line_num: int, currency: str
-    ) -> list[dict]:
+    def _build_line_segments(self, line: OrderLine, line_num: int, currency: str) -> list[dict]:
         """Build segment dicts for a line item."""
         segments = []
 
@@ -472,17 +466,21 @@ class EdifactOrderMapper(SemanticMapper[Order]):
         # C212 - Item number
         if line.item.standard_item_identification:
             si = line.item.standard_item_identification
-            lin_elements.append({
-                "components": [
-                    si.id.value,
-                    "EN" if si.id.scheme_id == "EAN" else "SA",
-                ],
-            })
+            lin_elements.append(
+                {
+                    "components": [
+                        si.id.value,
+                        "EN" if si.id.scheme_id == "EAN" else "SA",
+                    ],
+                }
+            )
         elif line.item.sellers_item_identification:
             si = line.item.sellers_item_identification
-            lin_elements.append({
-                "components": [si.id.value, "SA"],
-            })
+            lin_elements.append(
+                {
+                    "components": [si.id.value, "SA"],
+                }
+            )
         else:
             lin_elements.append("")
 
@@ -490,48 +488,52 @@ class EdifactOrderMapper(SemanticMapper[Order]):
 
         # IMD - Item description
         if line.item.description:
-            segments.append({
-                "tag": "IMD",
-                "elements": [
-                    "F",  # Free-form
-                    "",
-                    {"components": ["", "", "", line.item.description]},
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "IMD",
+                    "elements": [
+                        "F",  # Free-form
+                        "",
+                        {"components": ["", "", "", line.item.description]},
+                    ],
+                }
+            )
 
         # QTY - Quantity
-        segments.append({
-            "tag": "QTY",
-            "elements": [
-                {
-                    "components": [
-                        "21",  # Ordered quantity
-                        str(line.quantity.value),
-                        line.quantity.unit_code,
-                    ]
-                },
-            ],
-        })
-
-        # PRI - Price
-        if line.price:
-            segments.append({
-                "tag": "PRI",
+        segments.append(
+            {
+                "tag": "QTY",
                 "elements": [
                     {
                         "components": [
-                            "AAA",  # Calculation net
-                            str(line.price.price_amount.value),
+                            "21",  # Ordered quantity
+                            str(line.quantity.value),
+                            line.quantity.unit_code,
                         ]
                     },
                 ],
-            })
+            }
+        )
+
+        # PRI - Price
+        if line.price:
+            segments.append(
+                {
+                    "tag": "PRI",
+                    "elements": [
+                        {
+                            "components": [
+                                "AAA",  # Calculation net
+                                str(line.price.price_amount.value),
+                            ]
+                        },
+                    ],
+                }
+            )
 
         return segments
 
 
-def find_all_segments_in_group(
-    group: "SegmentGroupInstance", tag: str
-) -> "list[ParsedSegment]":
+def find_all_segments_in_group(group: "SegmentGroupInstance", tag: str) -> "list[ParsedSegment]":
     """Find all segments with given tag in a group."""
     return [seg for seg in group.segments if seg.tag == tag]

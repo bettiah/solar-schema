@@ -428,9 +428,7 @@ class UBLReceiptAdviceMapper(SemanticMapper[ReceiptAdvice]):
 
         # Order line reference
         if line.order_line_reference:
-            result["cac:OrderLineReference"] = {
-                "cbc:LineID": line.order_line_reference.line_id
-            }
+            result["cac:OrderLineReference"] = {"cbc:LineID": line.order_line_reference.line_id}
 
         # Item
         result["cac:Item"] = self._build_item(line.item)

@@ -172,51 +172,51 @@ class X12OrderMapper(SemanticMapper[Order]):
         segments = []
 
         # BEG segment
-        segments.append({
-            "tag": "BEG",
-            "elements": [
-                model.document_purpose_code or "00",  # BEG01
-                model.order_type_code or "SA",  # BEG02
-                model.id,  # BEG03
-                "",  # BEG04 - Release Number
-                model.issue_date.strftime("%Y%m%d"),  # BEG05
-            ],
-        })
+        segments.append(
+            {
+                "tag": "BEG",
+                "elements": [
+                    model.document_purpose_code or "00",  # BEG01
+                    model.order_type_code or "SA",  # BEG02
+                    model.id,  # BEG03
+                    "",  # BEG04 - Release Number
+                    model.issue_date.strftime("%Y%m%d"),  # BEG05
+                ],
+            }
+        )
 
         # CUR segment if non-USD
         if model.document_currency_code != "USD":
-            segments.append({
-                "tag": "CUR",
-                "elements": [
-                    "BY",  # CUR01 - Entity Identifier Code
-                    model.document_currency_code,  # CUR02
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "CUR",
+                    "elements": [
+                        "BY",  # CUR01 - Entity Identifier Code
+                        model.document_currency_code,  # CUR02
+                    ],
+                }
+            )
 
         # N1 loops for parties
         if model.buyer_customer_party:
-            segments.extend(
-                self._build_n1_loop("BY", model.buyer_customer_party.party)
-            )
+            segments.extend(self._build_n1_loop("BY", model.buyer_customer_party.party))
         if model.seller_supplier_party:
-            segments.extend(
-                self._build_n1_loop("SE", model.seller_supplier_party.party)
-            )
+            segments.extend(self._build_n1_loop("SE", model.seller_supplier_party.party))
         for delivery in model.delivery:
             if delivery.delivery_party:
-                segments.extend(
-                    self._build_n1_loop("ST", delivery.delivery_party)
-                )
+                segments.extend(self._build_n1_loop("ST", delivery.delivery_party))
 
         # PO1 loops for line items
         for line in model.order_lines:
             segments.extend(self._build_po1_loop(line, model.document_currency_code))
 
         # CTT segment
-        segments.append({
-            "tag": "CTT",
-            "elements": [str(len(model.order_lines))],
-        })
+        segments.append(
+            {
+                "tag": "CTT",
+                "elements": [str(len(model.order_lines))],
+            }
+        )
 
         return segments
 
@@ -272,9 +272,7 @@ class X12OrderMapper(SemanticMapper[Order]):
             if id_value:
                 scheme = map_id_qualifier(id_qualifier) if id_qualifier else None
                 party.party_identifications.append(
-                    PartyIdentification(
-                        id=Identifier(value=id_value, scheme_id=scheme)
-                    )
+                    PartyIdentification(id=Identifier(value=id_value, scheme_id=scheme))
                 )
 
         # N2 segment - additional name
@@ -341,9 +339,7 @@ class X12OrderMapper(SemanticMapper[Order]):
             note=description,
         )
 
-    def _parse_po1_loop(
-        self, po1_loop: "LoopInstance", line_num: int, currency: str
-    ) -> OrderLine:
+    def _parse_po1_loop(self, po1_loop: "LoopInstance", line_num: int, currency: str) -> OrderLine:
         """Parse a PO1 loop into an OrderLine."""
         po1 = find_segment_in_loop(po1_loop, "PO1")
         if not po1:
@@ -371,13 +367,9 @@ class X12OrderMapper(SemanticMapper[Order]):
 
         # Set price if present
         if price_value is not None:
-            line.price = Price(
-                price_amount=Amount(value=price_value, currency=currency)
-            )
+            line.price = Price(price_amount=Amount(value=price_value, currency=currency))
             # Calculate line extension
-            line.line_extension_amount = Amount(
-                value=qty_value * price_value, currency=currency
-            )
+            line.line_extension_amount = Amount(value=qty_value * price_value, currency=currency)
 
         # Parse SAC segments (allowances/charges)
         for sac in find_all_segments_in_loop(po1_loop, "SAC"):
@@ -387,9 +379,7 @@ class X12OrderMapper(SemanticMapper[Order]):
 
         return line
 
-    def _build_item_from_po1(
-        self, po1: "ParsedSegment", po1_loop: "LoopInstance"
-    ) -> Item:
+    def _build_item_from_po1(self, po1: "ParsedSegment", po1_loop: "LoopInstance") -> Item:
         """Build an Item from PO1 segment and loop."""
         item = Item()
 
@@ -399,9 +389,7 @@ class X12OrderMapper(SemanticMapper[Order]):
             value = get_element_value(po1, i + 1)
             if qualifier and value:
                 field_type, scheme = map_product_id_qualifier(qualifier)
-                item_id = ItemIdentification(
-                    id=Identifier(value=value, scheme_id=scheme)
-                )
+                item_id = ItemIdentification(id=Identifier(value=value, scheme_id=scheme))
 
                 if field_type == "standard":
                     item.standard_item_identification = item_id
@@ -421,9 +409,7 @@ class X12OrderMapper(SemanticMapper[Order]):
 
         return item
 
-    def _parse_sac_segment(
-        self, sac: "ParsedSegment", currency: str
-    ) -> AllowanceCharge | None:
+    def _parse_sac_segment(self, sac: "ParsedSegment", currency: str) -> AllowanceCharge | None:
         """Parse a SAC segment into AllowanceCharge."""
         indicator = get_element_value(sac, 1)
         if not indicator:
@@ -512,10 +498,12 @@ class X12OrderMapper(SemanticMapper[Order]):
 
         # PID segment (description)
         if line.item.description:
-            segments.append({
-                "tag": "PID",
-                "elements": ["F", "", "", "", line.item.description],
-            })
+            segments.append(
+                {
+                    "tag": "PID",
+                    "elements": ["F", "", "", "", line.item.description],
+                }
+            )
 
         # SAC segments (allowances/charges)
         for ac in line.allowance_charges:

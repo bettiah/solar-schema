@@ -14,10 +14,10 @@ from .base import SemanticModel
 from .delivery import Delivery
 from .item import Item, Price
 from .monetary import MonetaryTotal
-from .party import CustomerParty, Party, SupplierParty
+from .party import CustomerParty, SupplierParty
 from .payment import PaymentMeans, PaymentTerms
 from .primitives import Amount, Period, Quantity
-from .reference import DocumentReference, OrderReference
+from .reference import DocumentReference
 from .tax import TaxTotal
 
 

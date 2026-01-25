@@ -12,7 +12,7 @@ from edi_schema.x12.models import (
     Segment,
     TransactionSet,
 )
-from edi_schema.x12.parser.loop_hierarchy import LoopNode, build_loop_hierarchy
+from edi_schema.x12.parser.loop_hierarchy import build_loop_hierarchy
 
 if TYPE_CHECKING:
     from edi_schema.x12.schema import X12Schema

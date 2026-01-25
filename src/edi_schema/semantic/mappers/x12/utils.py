@@ -189,9 +189,7 @@ def format_x12_amount(amount: Decimal | None, implied_decimals: int = 2) -> str:
     return str(amount)
 
 
-def find_segment(
-    content: list["ParsedSegment | LoopInstance"], tag: str
-) -> "ParsedSegment | None":
+def find_segment(content: list["ParsedSegment | LoopInstance"], tag: str) -> "ParsedSegment | None":
     """
     Find the first segment with the given tag in content.
 
@@ -218,9 +216,7 @@ def find_all_segments(
     return [item for item in content if isinstance(item, ParsedSegment) and item.tag == tag]
 
 
-def find_loop(
-    content: list["ParsedSegment | LoopInstance"], loop_id: str
-) -> "LoopInstance | None":
+def find_loop(content: list["ParsedSegment | LoopInstance"], loop_id: str) -> "LoopInstance | None":
     """
     Find the first loop with the given ID in content.
     """

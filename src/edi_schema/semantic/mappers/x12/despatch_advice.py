@@ -135,37 +135,37 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         segments = []
 
         # BSN segment
-        segments.append({
-            "tag": "BSN",
-            "elements": [
-                "00",  # BSN01 - Purpose Code (Original)
-                model.id,
-                model.issue_date.strftime("%Y%m%d"),
-                model.issue_time.strftime("%H%M") if model.issue_time else "",
-                "0001",  # BSN05 - Hierarchical Structure Code
-            ],
-        })
+        segments.append(
+            {
+                "tag": "BSN",
+                "elements": [
+                    "00",  # BSN01 - Purpose Code (Original)
+                    model.id,
+                    model.issue_date.strftime("%Y%m%d"),
+                    model.issue_time.strftime("%H%M") if model.issue_time else "",
+                    "0001",  # BSN05 - Hierarchical Structure Code
+                ],
+            }
+        )
 
         # Build HL hierarchy
         hl_counter = [1]  # Mutable counter for HL IDs
 
         # Shipment level
         if model.shipment:
-            segments.extend(
-                self._build_shipment_hl(model, hl_counter)
-            )
+            segments.extend(self._build_shipment_hl(model, hl_counter))
 
         # Order references and lines
         for order_ref in model.order_references:
-            segments.extend(
-                self._build_order_hl(order_ref, model.despatch_lines, hl_counter)
-            )
+            segments.extend(self._build_order_hl(order_ref, model.despatch_lines, hl_counter))
 
         # CTT segment
-        segments.append({
-            "tag": "CTT",
-            "elements": [str(len(model.despatch_lines))],
-        })
+        segments.append(
+            {
+                "tag": "CTT",
+                "elements": [str(len(model.despatch_lines))],
+            }
+        )
 
         return segments
 
@@ -179,10 +179,7 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             self._process_hl_node(child, asn, hl_root)
 
     def _process_hl_node(
-        self,
-        node: "HLNode",
-        asn: DespatchAdvice,
-        parent: "HLNode | None"
+        self, node: "HLNode", asn: DespatchAdvice, parent: "HLNode | None"
     ) -> None:
         """Process a single HL node and its children."""
         level_code = node.level_code
@@ -220,9 +217,7 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
                 if lading_qty:
                     shipment.total_transport_handling_unit_quantity = int(lading_qty)
                 if weight and weight_unit:
-                    shipment.gross_weight_measure = Measure(
-                        value=weight, unit_code=weight_unit
-                    )
+                    shipment.gross_weight_measure = Measure(value=weight, unit_code=weight_unit)
 
             elif tag == "TD5":
                 # Carrier details - transport
@@ -232,9 +227,7 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
                 if carrier_id:
                     shipment.carrier_party = Party(
                         party_identifications=[
-                            PartyIdentification(
-                                id=Identifier(value=carrier_id, scheme_id="SCAC")
-                            )
+                            PartyIdentification(id=Identifier(value=carrier_id, scheme_id="SCAC"))
                         ]
                     )
 
@@ -329,9 +322,7 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
                 unit = get_element_value(seg, 3)
 
                 if qty:
-                    line.delivered_quantity = Quantity(
-                        value=qty, unit_code=unit or "EA"
-                    )
+                    line.delivered_quantity = Quantity(value=qty, unit_code=unit or "EA")
 
             elif tag == "PID":
                 line.item.description = get_element_value(seg, 5)
@@ -370,9 +361,7 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             elif field_type == "buyers":
                 item.buyers_item_identification = item_id
 
-    def _process_loops(
-        self, content: list, asn: DespatchAdvice
-    ) -> None:
+    def _process_loops(self, content: list, asn: DespatchAdvice) -> None:
         """Fallback processing using loop structure instead of HL tree."""
         # This handles cases where HL parsing isn't available
         n1_loops = find_all_loops(content, "N1")
@@ -455,19 +444,19 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
 
         return party
 
-    def _build_shipment_hl(
-        self, model: DespatchAdvice, hl_counter: list[int]
-    ) -> list[dict]:
+    def _build_shipment_hl(self, model: DespatchAdvice, hl_counter: list[int]) -> list[dict]:
         """Build shipment-level HL segments."""
         segments = []
         shipment_hl_id = str(hl_counter[0])
         hl_counter[0] += 1
 
         # HL segment for shipment
-        segments.append({
-            "tag": "HL",
-            "elements": [shipment_hl_id, "", "S", "1"],
-        })
+        segments.append(
+            {
+                "tag": "HL",
+                "elements": [shipment_hl_id, "", "S", "1"],
+            }
+        )
 
         # TD1 - Carrier details
         if model.shipment:
@@ -482,28 +471,23 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             # TD5 - Carrier
             if ship.carrier_party and ship.carrier_party.party_identifications:
                 carrier_id = ship.carrier_party.party_identifications[0].id.value
-                segments.append({
-                    "tag": "TD5",
-                    "elements": ["", "2", carrier_id],
-                })
+                segments.append(
+                    {
+                        "tag": "TD5",
+                        "elements": ["", "2", carrier_id],
+                    }
+                )
 
         # N1 loops for parties
         if model.despatch_supplier_party:
-            segments.extend(
-                self._build_n1_segments("SF", model.despatch_supplier_party.party)
-            )
+            segments.extend(self._build_n1_segments("SF", model.despatch_supplier_party.party))
         if model.delivery_customer_party:
-            segments.extend(
-                self._build_n1_segments("ST", model.delivery_customer_party.party)
-            )
+            segments.extend(self._build_n1_segments("ST", model.delivery_customer_party.party))
 
         return segments
 
     def _build_order_hl(
-        self,
-        order_ref: OrderReference,
-        lines: list[DespatchLine],
-        hl_counter: list[int]
+        self, order_ref: OrderReference, lines: list[DespatchLine], hl_counter: list[int]
     ) -> list[dict]:
         """Build order-level and item-level HL segments."""
         segments = []
@@ -511,55 +495,62 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         hl_counter[0] += 1
 
         # Order level HL
-        segments.append({
-            "tag": "HL",
-            "elements": [order_hl_id, "1", "O", "1"],
-        })
+        segments.append(
+            {
+                "tag": "HL",
+                "elements": [order_hl_id, "1", "O", "1"],
+            }
+        )
 
         # PRF - Purchase Order Reference
-        segments.append({
-            "tag": "PRF",
-            "elements": [order_ref.id],
-        })
+        segments.append(
+            {
+                "tag": "PRF",
+                "elements": [order_ref.id],
+            }
+        )
 
         # Item level HLs
         for line in lines:
             item_hl_id = str(hl_counter[0])
             hl_counter[0] += 1
 
-            segments.append({
-                "tag": "HL",
-                "elements": [item_hl_id, order_hl_id, "I", "0"],
-            })
+            segments.append(
+                {
+                    "tag": "HL",
+                    "elements": [item_hl_id, order_hl_id, "I", "0"],
+                }
+            )
 
             # LIN segment
             lin_elements = [line.id]
             if line.item.standard_item_identification:
                 scheme = line.item.standard_item_identification.id.scheme_id
                 qualifier = "UP" if scheme == "UPC" else "EN"
-                lin_elements.extend([
-                    qualifier,
-                    line.item.standard_item_identification.id.value
-                ])
+                lin_elements.extend([qualifier, line.item.standard_item_identification.id.value])
 
             segments.append({"tag": "LIN", "elements": lin_elements})
 
             # SN1 segment
-            segments.append({
-                "tag": "SN1",
-                "elements": [
-                    "",
-                    str(line.delivered_quantity.value),
-                    line.delivered_quantity.unit_code,
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "SN1",
+                    "elements": [
+                        "",
+                        str(line.delivered_quantity.value),
+                        line.delivered_quantity.unit_code,
+                    ],
+                }
+            )
 
             # PID segment
             if line.item.description:
-                segments.append({
-                    "tag": "PID",
-                    "elements": ["F", "", "", "", line.item.description],
-                })
+                segments.append(
+                    {
+                        "tag": "PID",
+                        "elements": ["F", "", "", "", line.item.description],
+                    }
+                )
 
         return segments
 
@@ -584,13 +575,15 @@ class X12DespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             if addr.street_name:
                 segments.append({"tag": "N3", "elements": [addr.street_name]})
             if addr.city_name:
-                segments.append({
-                    "tag": "N4",
-                    "elements": [
-                        addr.city_name,
-                        addr.country_subentity or "",
-                        addr.postal_zone or "",
-                    ],
-                })
+                segments.append(
+                    {
+                        "tag": "N4",
+                        "elements": [
+                            addr.city_name,
+                            addr.country_subentity or "",
+                            addr.postal_zone or "",
+                        ],
+                    }
+                )
 
         return segments

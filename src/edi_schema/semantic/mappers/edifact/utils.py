@@ -15,9 +15,7 @@ if TYPE_CHECKING:
     )
 
 
-def get_element_value(
-    segment: "ParsedSegment", index: int
-) -> str | None:
+def get_element_value(segment: "ParsedSegment", index: int) -> str | None:
     """
     Get element value from a segment by 1-indexed position.
 
@@ -162,10 +160,7 @@ def find_all_segments(
     """
     from edi_schema.edifact.ast import ParsedSegment
 
-    return [
-        item for item in content
-        if isinstance(item, ParsedSegment) and item.tag == tag
-    ]
+    return [item for item in content if isinstance(item, ParsedSegment) and item.tag == tag]
 
 
 def find_segment_group(
@@ -191,14 +186,13 @@ def find_all_segment_groups(
     from edi_schema.edifact.ast import SegmentGroupInstance
 
     return [
-        item for item in content
+        item
+        for item in content
         if isinstance(item, SegmentGroupInstance) and item.group_number == group_number
     ]
 
 
-def find_segment_in_group(
-    group: "SegmentGroupInstance", tag: str
-) -> "ParsedSegment | None":
+def find_segment_in_group(group: "SegmentGroupInstance", tag: str) -> "ParsedSegment | None":
     """Find a segment within a group."""
     for seg in group.segments:
         if seg.tag == tag:
@@ -206,9 +200,7 @@ def find_segment_in_group(
     return None
 
 
-def find_all_segments_in_group(
-    group: "SegmentGroupInstance", tag: str
-) -> "list[ParsedSegment]":
+def find_all_segments_in_group(group: "SegmentGroupInstance", tag: str) -> "list[ParsedSegment]":
     """Find all segments with given tag within a group."""
     return [seg for seg in group.segments if seg.tag == tag]
 
@@ -291,8 +283,7 @@ def map_reference_qualifier(qualifier: str) -> str:
 
 
 def get_dtm_date(
-    content: "list[ParsedSegment | SegmentGroupInstance]",
-    qualifier: str
+    content: "list[ParsedSegment | SegmentGroupInstance]", qualifier: str
 ) -> date | None:
     """
     Find DTM segment with specified qualifier and return parsed date.

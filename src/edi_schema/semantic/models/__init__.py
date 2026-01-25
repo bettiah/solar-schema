@@ -50,7 +50,6 @@ from .monetary import MonetaryTotal
 # Document models
 from .order import Order, OrderLine
 from .order_response import OrderResponse, OrderResponseLine
-from .quotation import Quotation, QuotationLine
 
 # Party models
 from .party import (
@@ -87,6 +86,7 @@ from .primitives import (
     Quantity,
     Text,
 )
+from .quotation import Quotation, QuotationLine
 
 # Reference models
 from .reference import (

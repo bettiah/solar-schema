@@ -168,9 +168,7 @@ class UBLQuotationMapper(SemanticMapper[Quotation]):
 
         return party
 
-    def _parse_quotation_line(
-        self, elem: "ParsedElement", currency: str
-    ) -> QuotationLine | None:
+    def _parse_quotation_line(self, elem: "ParsedElement", currency: str) -> QuotationLine | None:
         """Parse QuotationLine element."""
         line_item_elem = elem.first_child_by_name("LineItem")
         if not line_item_elem:

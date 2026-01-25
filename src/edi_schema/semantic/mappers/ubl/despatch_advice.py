@@ -556,9 +556,7 @@ class UBLDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         }
 
         if line.order_line_reference:
-            result["cac:OrderLineReference"] = {
-                "cbc:LineID": line.order_line_reference.line_id
-            }
+            result["cac:OrderLineReference"] = {"cbc:LineID": line.order_line_reference.line_id}
 
         return result
 

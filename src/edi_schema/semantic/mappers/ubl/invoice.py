@@ -247,9 +247,7 @@ class UBLInvoiceMapper(SemanticMapper[Invoice]):
 
         # Delivery
         if model.delivery:
-            invoice["cac:Delivery"] = [
-                self._build_delivery(d) for d in model.delivery
-            ]
+            invoice["cac:Delivery"] = [self._build_delivery(d) for d in model.delivery]
 
         # Payment means
         if model.payment_means:
@@ -271,14 +269,10 @@ class UBLInvoiceMapper(SemanticMapper[Invoice]):
 
         # Tax total
         if model.tax_total:
-            invoice["cac:TaxTotal"] = [
-                self._build_tax_total(tt) for tt in model.tax_total
-            ]
+            invoice["cac:TaxTotal"] = [self._build_tax_total(tt) for tt in model.tax_total]
 
         # Legal monetary total
-        invoice["cac:LegalMonetaryTotal"] = self._build_monetary_total(
-            model.legal_monetary_total
-        )
+        invoice["cac:LegalMonetaryTotal"] = self._build_monetary_total(model.legal_monetary_total)
 
         # Invoice lines
         invoice["cac:InvoiceLine"] = [
@@ -479,6 +473,7 @@ class UBLInvoiceMapper(SemanticMapper[Invoice]):
 
     def _parse_monetary_total(self, elem: "ParsedElement", currency: str) -> MonetaryTotal:
         """Parse a MonetaryTotal element."""
+
         def get_amt(tag: str) -> Amount | None:
             val, curr = get_amount_with_currency(elem, tag)
             return Amount(value=val, currency=curr or currency) if val else None
@@ -613,9 +608,7 @@ class UBLInvoiceMapper(SemanticMapper[Invoice]):
             pi_list = []
             for pi in party.party_identifications:
                 if pi.id.scheme_id:
-                    pi_list.append({
-                        "cbc:ID": {"@schemeID": pi.id.scheme_id, "#text": pi.id.value}
-                    })
+                    pi_list.append({"cbc:ID": {"@schemeID": pi.id.scheme_id, "#text": pi.id.value}})
                 else:
                     pi_list.append({"cbc:ID": pi.id.value})
             result["cac:PartyIdentification"] = pi_list
@@ -720,9 +713,7 @@ class UBLInvoiceMapper(SemanticMapper[Invoice]):
             }
         }
         if tt.tax_subtotals:
-            result["cac:TaxSubtotal"] = [
-                self._build_tax_subtotal(st) for st in tt.tax_subtotals
-            ]
+            result["cac:TaxSubtotal"] = [self._build_tax_subtotal(st) for st in tt.tax_subtotals]
         return result
 
     def _build_tax_subtotal(self, st: TaxSubtotal) -> dict:

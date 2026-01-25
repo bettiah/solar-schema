@@ -53,7 +53,6 @@ class TestUBLExampleFiles:
         assert parsed == snapshot
 
 
-
 class TestSpecificExamples:
     """Tests for specific example files with exact output comparison."""
 

@@ -20,9 +20,7 @@ def get_child_value(element: "ParsedElement | None", tag: str) -> str | None:
     return child.value if child else None
 
 
-def get_child_attr(
-    element: "ParsedElement | None", tag: str, attr: str
-) -> str | None:
+def get_child_attr(element: "ParsedElement | None", tag: str, attr: str) -> str | None:
     """Get an attribute value from a child element."""
     if element is None:
         return None
@@ -152,9 +150,7 @@ def get_identifier_with_scheme(
     return value, scheme_id, scheme_agency_id
 
 
-def find_party_by_type(
-    root: "ParsedElement", party_type: str
-) -> "ParsedElement | None":
+def find_party_by_type(root: "ParsedElement", party_type: str) -> "ParsedElement | None":
     """
     Find a party element by its type tag.
 

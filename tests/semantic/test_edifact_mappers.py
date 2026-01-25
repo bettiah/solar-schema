@@ -78,9 +78,7 @@ def make_raw_element(
 ) -> RawElement:
     """Create a RawElement."""
     if components is not None:
-        raw_components = [
-            make_raw_component(v, i + 1) for i, v in enumerate(components)
-        ]
+        raw_components = [make_raw_component(v, i + 1) for i, v in enumerate(components)]
         return RawElement(
             value=None,
             position=make_position(),
@@ -122,9 +120,7 @@ def make_parsed_element(raw: RawElement) -> ParsedElement:
     """Create a ParsedElement from RawElement."""
     components = None
     if raw.components:
-        components = [
-            ParsedComponent(value=rc.value, raw=rc) for rc in raw.components
-        ]
+        components = [ParsedComponent(value=rc.value, raw=rc) for rc in raw.components]
     return ParsedElement(raw=raw, components=components)
 
 
@@ -207,12 +203,14 @@ class TestEdifactUtilityFunctions:
     def test_parse_edifact_time_4char(self):
         """Test parsing HHMM format."""
         from datetime import time
+
         result = parse_edifact_time("1430")
         assert result == time(14, 30)
 
     def test_parse_edifact_time_6char(self):
         """Test parsing HHMMSS format."""
         from datetime import time
+
         result = parse_edifact_time("143025")
         assert result == time(14, 30, 25)
 
@@ -239,6 +237,7 @@ class TestEdifactUtilityFunctions:
     def test_format_edifact_time(self):
         """Test formatting time to EDIFACT."""
         from datetime import time
+
         result = format_edifact_time(time(14, 30))
         assert result == "1430"
 
@@ -280,58 +279,82 @@ class TestEdifactOrderMapper:
     def simple_orders_message(self) -> MessageInstance:
         """Create a simple ORDERS message for testing."""
         # BGM segment - Beginning of Message
-        bgm = make_parsed_segment("BGM", [
-            ["220"],         # C002 - Document type (Order)
-            ["PO12345"],     # C106 - Document ID
-            "9",             # Original
-        ])
+        bgm = make_parsed_segment(
+            "BGM",
+            [
+                ["220"],  # C002 - Document type (Order)
+                ["PO12345"],  # C106 - Document ID
+                "9",  # Original
+            ],
+        )
 
         # DTM segment - Document date
-        dtm = make_parsed_segment("DTM", [
-            ["137", "20241215", "102"],  # C507 - Date qualifier, date, format
-        ])
+        dtm = make_parsed_segment(
+            "DTM",
+            [
+                ["137", "20241215", "102"],  # C507 - Date qualifier, date, format
+            ],
+        )
 
         # CUX segment - Currency
-        cux = make_parsed_segment("CUX", [
-            ["2", "USD", "4"],  # C504 - Currency details
-        ])
+        cux = make_parsed_segment(
+            "CUX",
+            [
+                ["2", "USD", "4"],  # C504 - Currency details
+            ],
+        )
 
         # SG2 - Buyer party group
-        nad_by = make_parsed_segment("NAD", [
-            "BY",                   # Party qualifier
-            ["ACME001", "", "92"],  # C082 - Party ID
-            ["Acme Corp"],          # C080 - Party name
-            "",                     # C059 - Street
-            ["123 Main Street"],    # C059 - Street detail
-            "Chicago",              # City
-            "IL",                   # State
-            "60601",                # Postal
-            "US",                   # Country
-        ])
+        nad_by = make_parsed_segment(
+            "NAD",
+            [
+                "BY",  # Party qualifier
+                ["ACME001", "", "92"],  # C082 - Party ID
+                ["Acme Corp"],  # C080 - Party name
+                "",  # C059 - Street
+                ["123 Main Street"],  # C059 - Street detail
+                "Chicago",  # City
+                "IL",  # State
+                "60601",  # Postal
+                "US",  # Country
+            ],
+        )
         sg2_buyer = make_segment_group(2, [nad_by])
 
         # SG2 - Seller party group
-        nad_su = make_parsed_segment("NAD", [
-            "SU",
-            ["SUPP001", "", "1"],
-            ["Widget Supplier"],
-        ])
+        nad_su = make_parsed_segment(
+            "NAD",
+            [
+                "SU",
+                ["SUPP001", "", "1"],
+                ["Widget Supplier"],
+            ],
+        )
         sg2_seller = make_segment_group(2, [nad_su])
 
         # SG25 - Line item group
-        lin = make_parsed_segment("LIN", [
-            "1",                           # Line number
-            "",                            # Action
-            ["012345678901", "EN"],        # C212 - Product ID (EAN)
-        ])
-        qty = make_parsed_segment("QTY", [
-            ["21", "10", "EA"],  # C186 - Quantity details
-        ])
-        imd = make_parsed_segment("IMD", [
-            "F",                              # Description format
-            "",
-            ["", "", "", "Industrial Widget"],  # C273 - Item description
-        ])
+        lin = make_parsed_segment(
+            "LIN",
+            [
+                "1",  # Line number
+                "",  # Action
+                ["012345678901", "EN"],  # C212 - Product ID (EAN)
+            ],
+        )
+        qty = make_parsed_segment(
+            "QTY",
+            [
+                ["21", "10", "EA"],  # C186 - Quantity details
+            ],
+        )
+        imd = make_parsed_segment(
+            "IMD",
+            [
+                "F",  # Description format
+                "",
+                ["", "", "", "Industrial Widget"],  # C273 - Item description
+            ],
+        )
         sg25 = make_segment_group(25, [lin, qty, imd])
 
         # UNS segment - Section control
@@ -408,9 +431,7 @@ class TestEdifactOrderMapper:
                 party=Party(
                     party_names=[PartyName(name="Test Buyer")],
                     party_identifications=[
-                        PartyIdentification(
-                            id=Identifier(value="BUYER001", scheme_id="91")
-                        )
+                        PartyIdentification(id=Identifier(value="BUYER001", scheme_id="91"))
                     ],
                 )
             ),
@@ -418,9 +439,7 @@ class TestEdifactOrderMapper:
                 OrderLine(
                     id="1",
                     quantity=Quantity(value=Decimal("5"), unit_code="EA"),
-                    price=Price(
-                        price_amount=Amount(value=Decimal("100.00"), currency="EUR")
-                    ),
+                    price=Price(price_amount=Amount(value=Decimal("100.00"), currency="EUR")),
                     item=Item(
                         description="Test Product",
                         sellers_item_identification=ItemIdentification(
@@ -474,83 +493,128 @@ class TestEdifactInvoiceMapper:
     def simple_invoic_message(self) -> MessageInstance:
         """Create a simple INVOIC message for testing."""
         # BGM segment
-        bgm = make_parsed_segment("BGM", [
-            ["380"],         # C002 - Invoice type
-            ["INV-001"],     # C106 - Document ID
-            "9",
-        ])
+        bgm = make_parsed_segment(
+            "BGM",
+            [
+                ["380"],  # C002 - Invoice type
+                ["INV-001"],  # C106 - Document ID
+                "9",
+            ],
+        )
 
         # DTM segment - Invoice date
-        dtm_doc = make_parsed_segment("DTM", [
-            ["137", "20241220", "102"],
-        ])
+        dtm_doc = make_parsed_segment(
+            "DTM",
+            [
+                ["137", "20241220", "102"],
+            ],
+        )
 
         # DTM segment - Due date
-        dtm_due = make_parsed_segment("DTM", [
-            ["13", "20250120", "102"],
-        ])
+        dtm_due = make_parsed_segment(
+            "DTM",
+            [
+                ["13", "20250120", "102"],
+            ],
+        )
 
         # SG1 - Reference group (Order reference)
-        rff = make_parsed_segment("RFF", [
-            ["ON", "PO12345"],
-        ])
+        rff = make_parsed_segment(
+            "RFF",
+            [
+                ["ON", "PO12345"],
+            ],
+        )
         sg1 = make_segment_group(1, [rff])
 
         # CUX segment
-        cux = make_parsed_segment("CUX", [
-            ["2", "USD", "4"],
-        ])
+        cux = make_parsed_segment(
+            "CUX",
+            [
+                ["2", "USD", "4"],
+            ],
+        )
 
         # SG2 - Seller party group
-        nad_su = make_parsed_segment("NAD", [
-            "SU",
-            ["SUPP001", "", "1"],
-            ["Widget Supplier"],
-            "",
-            ["100 Industrial Way"],
-            "Memphis",
-            "TN",
-            "38118",
-            "US",
-        ])
+        nad_su = make_parsed_segment(
+            "NAD",
+            [
+                "SU",
+                ["SUPP001", "", "1"],
+                ["Widget Supplier"],
+                "",
+                ["100 Industrial Way"],
+                "Memphis",
+                "TN",
+                "38118",
+                "US",
+            ],
+        )
         sg2_seller = make_segment_group(2, [nad_su])
 
         # SG2 - Buyer party group
-        nad_by = make_parsed_segment("NAD", [
-            "BY",
-            ["ACME001", "", "92"],
-            ["Acme Corp"],
-        ])
+        nad_by = make_parsed_segment(
+            "NAD",
+            [
+                "BY",
+                ["ACME001", "", "92"],
+                ["Acme Corp"],
+            ],
+        )
         sg2_buyer = make_segment_group(2, [nad_by])
 
         # SG25 - Line item group
-        lin = make_parsed_segment("LIN", [
-            "1",
-            "",
-            ["012345678901", "EN"],
-        ])
-        qty = make_parsed_segment("QTY", [
-            ["47", "10", "EA"],  # Invoiced quantity
-        ])
-        moa = make_parsed_segment("MOA", [
-            ["203", "250.00"],  # Line amount
-        ])
+        lin = make_parsed_segment(
+            "LIN",
+            [
+                "1",
+                "",
+                ["012345678901", "EN"],
+            ],
+        )
+        qty = make_parsed_segment(
+            "QTY",
+            [
+                ["47", "10", "EA"],  # Invoiced quantity
+            ],
+        )
+        moa = make_parsed_segment(
+            "MOA",
+            [
+                ["203", "250.00"],  # Line amount
+            ],
+        )
         sg25 = make_segment_group(25, [lin, qty, moa])
 
         # UNS - Section control
         uns = make_parsed_segment("UNS", ["S"])
 
         # MOA - Total amounts
-        moa_total = make_parsed_segment("MOA", [
-            ["9", "250.00"],  # Amount due
-        ])
-        moa_tax = make_parsed_segment("MOA", [
-            ["176", "25.00"],  # Tax amount
-        ])
+        moa_total = make_parsed_segment(
+            "MOA",
+            [
+                ["9", "250.00"],  # Amount due
+            ],
+        )
+        moa_tax = make_parsed_segment(
+            "MOA",
+            [
+                ["176", "25.00"],  # Tax amount
+            ],
+        )
 
         content = [
-            bgm, dtm_doc, dtm_due, sg1, cux, sg2_seller, sg2_buyer,
-            sg25, uns, moa_total, moa_tax,
+            bgm,
+            dtm_doc,
+            dtm_due,
+            sg1,
+            cux,
+            sg2_seller,
+            sg2_buyer,
+            sg25,
+            uns,
+            moa_total,
+            moa_tax,
         ]
 
         return make_message_instance("INVOIC", content)
@@ -626,12 +690,8 @@ class TestEdifactInvoiceMapper:
                 InvoiceLine(
                     id="1",
                     invoiced_quantity=Quantity(value=Decimal("5"), unit_code="EA"),
-                    line_extension_amount=Amount(
-                        value=Decimal("500"), currency="USD"
-                    ),
-                    price=Price(
-                        price_amount=Amount(value=Decimal("100.00"), currency="USD")
-                    ),
+                    line_extension_amount=Amount(value=Decimal("500"), currency="USD"),
+                    price=Price(price_amount=Amount(value=Decimal("100.00"), currency="USD")),
                     item=Item(description="Test Item"),
                 )
             ],
@@ -667,72 +727,99 @@ class TestEdifactDespatchAdviceMapper:
     def simple_desadv_message(self) -> MessageInstance:
         """Create a simple DESADV message for testing."""
         # BGM segment
-        bgm = make_parsed_segment("BGM", [
-            ["351"],         # C002 - Despatch advice
-            ["ASN-001"],     # C106 - Document ID
-            "9",
-        ])
+        bgm = make_parsed_segment(
+            "BGM",
+            [
+                ["351"],  # C002 - Despatch advice
+                ["ASN-001"],  # C106 - Document ID
+                "9",
+            ],
+        )
 
         # DTM segment - Document date
-        dtm_doc = make_parsed_segment("DTM", [
-            ["137", "20241218", "102"],
-        ])
+        dtm_doc = make_parsed_segment(
+            "DTM",
+            [
+                ["137", "20241218", "102"],
+            ],
+        )
 
         # DTM segment - Despatch date
-        dtm_ship = make_parsed_segment("DTM", [
-            ["11", "20241219", "102"],
-        ])
+        dtm_ship = make_parsed_segment(
+            "DTM",
+            [
+                ["11", "20241219", "102"],
+            ],
+        )
 
         # SG1 - Reference group
-        rff = make_parsed_segment("RFF", [
-            ["ON", "PO12345"],
-        ])
+        rff = make_parsed_segment(
+            "RFF",
+            [
+                ["ON", "PO12345"],
+            ],
+        )
         sg1 = make_segment_group(1, [rff])
 
         # SG2 - Ship from party
-        nad_sf = make_parsed_segment("NAD", [
-            "SF",
-            ["WH001", "", "92"],
-            ["Warehouse Alpha"],
-            "",
-            ["100 Industrial Blvd"],
-            "Memphis",
-            "TN",
-            "38118",
-            "US",
-        ])
+        nad_sf = make_parsed_segment(
+            "NAD",
+            [
+                "SF",
+                ["WH001", "", "92"],
+                ["Warehouse Alpha"],
+                "",
+                ["100 Industrial Blvd"],
+                "Memphis",
+                "TN",
+                "38118",
+                "US",
+            ],
+        )
         sg2_sf = make_segment_group(2, [nad_sf])
 
         # SG2 - Consignee party
-        nad_uc = make_parsed_segment("NAD", [
-            "UC",
-            ["ACME001", "", "92"],
-            ["Acme Corp"],
-        ])
+        nad_uc = make_parsed_segment(
+            "NAD",
+            [
+                "UC",
+                ["ACME001", "", "92"],
+                ["Acme Corp"],
+            ],
+        )
         sg2_uc = make_segment_group(2, [nad_uc])
 
         # SG10 - Transport details
-        tdt = make_parsed_segment("TDT", [
-            "20",       # Stage qualifier
-            "",
-            ["30"],     # C220 - Mode (Road)
-            "",
-            ["FEDX"],   # C040 - Carrier ID
-        ])
+        tdt = make_parsed_segment(
+            "TDT",
+            [
+                "20",  # Stage qualifier
+                "",
+                ["30"],  # C220 - Mode (Road)
+                "",
+                ["FEDX"],  # C040 - Carrier ID
+            ],
+        )
         sg10 = make_segment_group(10, [tdt])
 
         # SG25 - Consignment packing
         cps = make_parsed_segment("CPS", ["1"])
 
         # SG26 - Line item (nested in SG25)
-        lin = make_parsed_segment("LIN", [
-            "1",
-            "",
-            ["012345678901", "EN"],
-        ])
-        qty = make_parsed_segment("QTY", [
-            ["12", "10", "EA"],  # Despatch quantity
-        ])
+        lin = make_parsed_segment(
+            "LIN",
+            [
+                "1",
+                "",
+                ["012345678901", "EN"],
+            ],
+        )
+        qty = make_parsed_segment(
+            "QTY",
+            [
+                ["12", "10", "EA"],  # Despatch quantity
+            ],
+        )
         sg26 = make_segment_group(26, [lin, qty])
         sg25 = make_segment_group(25, [cps], children=[sg26])
 
@@ -740,7 +827,15 @@ class TestEdifactDespatchAdviceMapper:
         cnt = make_parsed_segment("CNT", [["2", "1"]])
 
         content = [
-            bgm, dtm_doc, dtm_ship, sg1, sg2_sf, sg2_uc, sg10, sg25, cnt,
+            bgm,
+            dtm_doc,
+            dtm_ship,
+            sg1,
+            sg2_sf,
+            sg2_uc,
+            sg10,
+            sg25,
+            cnt,
         ]
 
         return make_message_instance("DESADV", content)
@@ -858,9 +953,7 @@ class TestEdifactRoundTrip:
                 party=Party(
                     party_names=[PartyName(name="Round Trip Buyer")],
                     party_identifications=[
-                        PartyIdentification(
-                            id=Identifier(value="BUYER123", scheme_id="92")
-                        )
+                        PartyIdentification(id=Identifier(value="BUYER123", scheme_id="92"))
                     ],
                 )
             ),
@@ -868,9 +961,7 @@ class TestEdifactRoundTrip:
                 OrderLine(
                     id="1",
                     quantity=Quantity(value=Decimal("25"), unit_code="CS"),
-                    price=Price(
-                        price_amount=Amount(value=Decimal("50.00"), currency="USD")
-                    ),
+                    price=Price(price_amount=Amount(value=Decimal("50.00"), currency="USD")),
                     item=Item(
                         description="Round Trip Product",
                         standard_item_identification=ItemIdentification(
@@ -917,12 +1008,8 @@ class TestEdifactRoundTrip:
                 InvoiceLine(
                     id="1",
                     invoiced_quantity=Quantity(value=Decimal("10"), unit_code="EA"),
-                    line_extension_amount=Amount(
-                        value=Decimal("1000"), currency="EUR"
-                    ),
-                    price=Price(
-                        price_amount=Amount(value=Decimal("100"), currency="EUR")
-                    ),
+                    line_extension_amount=Amount(value=Decimal("1000"), currency="EUR"),
+                    price=Price(price_amount=Amount(value=Decimal("100"), currency="EUR")),
                     item=Item(description="Test Line Item"),
                 )
             ],

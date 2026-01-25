@@ -30,8 +30,6 @@ from pathlib import Path
 from typing import IO, Protocol, runtime_checkable
 
 from edi_schema.x12.ast import (
-    LoopInstance,
-    ParsedSegment,
     ParseResult,
     RawSegment,
 )

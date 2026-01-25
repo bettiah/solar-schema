@@ -174,9 +174,7 @@ class X12QuotationMapper(SemanticMapper[Quotation]):
 
         return party
 
-    def _parse_line_loop(
-        self, loop: "LoopInstance", line_num: int, currency: str
-    ) -> QuotationLine:
+    def _parse_line_loop(self, loop: "LoopInstance", line_num: int, currency: str) -> QuotationLine:
         """Parse PO1 loop into QuotationLine."""
         po1 = find_segment_in_loop(loop, "PO1")
         if not po1:

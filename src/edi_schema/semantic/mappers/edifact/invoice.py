@@ -224,85 +224,89 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         segments = []
 
         # BGM - Beginning of message
-        segments.append({
-            "tag": "BGM",
-            "elements": [
-                {"value": model.invoice_type_code or "380"},  # Commercial invoice
-                {"components": [model.id]},
-                "9",  # Original
-            ],
-        })
+        segments.append(
+            {
+                "tag": "BGM",
+                "elements": [
+                    {"value": model.invoice_type_code or "380"},  # Commercial invoice
+                    {"components": [model.id]},
+                    "9",  # Original
+                ],
+            }
+        )
 
         # DTM - Document date
-        segments.append({
-            "tag": "DTM",
-            "elements": [
-                {
-                    "components": [
-                        "137",
-                        format_edifact_date(model.issue_date),
-                        "102",
-                    ]
-                },
-            ],
-        })
-
-        # DTM - Due date
-        if model.due_date:
-            segments.append({
+        segments.append(
+            {
                 "tag": "DTM",
                 "elements": [
                     {
                         "components": [
-                            "13",  # Due date
-                            format_edifact_date(model.due_date),
+                            "137",
+                            format_edifact_date(model.issue_date),
                             "102",
                         ]
                     },
                 ],
-            })
+            }
+        )
+
+        # DTM - Due date
+        if model.due_date:
+            segments.append(
+                {
+                    "tag": "DTM",
+                    "elements": [
+                        {
+                            "components": [
+                                "13",  # Due date
+                                format_edifact_date(model.due_date),
+                                "102",
+                            ]
+                        },
+                    ],
+                }
+            )
 
         # RFF - Order reference
         if model.order_reference:
-            segments.append({
-                "tag": "RFF",
-                "elements": [
-                    {"components": ["ON", model.order_reference.id]},
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "RFF",
+                    "elements": [
+                        {"components": ["ON", model.order_reference.id]},
+                    ],
+                }
+            )
 
         # CUX - Currency
         if model.document_currency_code:
-            segments.append({
-                "tag": "CUX",
-                "elements": [
-                    {
-                        "components": [
-                            "2",
-                            model.document_currency_code,
-                            "4",
-                        ]
-                    },
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "CUX",
+                    "elements": [
+                        {
+                            "components": [
+                                "2",
+                                model.document_currency_code,
+                                "4",
+                            ]
+                        },
+                    ],
+                }
+            )
 
         # NAD - Supplier
         if model.accounting_supplier_party:
-            segments.extend(
-                self._build_nad_segments("SU", model.accounting_supplier_party.party)
-            )
+            segments.extend(self._build_nad_segments("SU", model.accounting_supplier_party.party))
 
         # NAD - Customer
         if model.accounting_customer_party:
-            segments.extend(
-                self._build_nad_segments("BY", model.accounting_customer_party.party)
-            )
+            segments.extend(self._build_nad_segments("BY", model.accounting_customer_party.party))
 
         # LIN groups - Line items
         for i, line in enumerate(model.invoice_lines, 1):
-            segments.extend(
-                self._build_line_segments(line, i, model.document_currency_code)
-            )
+            segments.extend(self._build_line_segments(line, i, model.document_currency_code))
 
         # UNS - Section control
         segments.append({"tag": "UNS", "elements": ["S"]})
@@ -311,72 +315,82 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         if model.legal_monetary_total:
             lmt = model.legal_monetary_total
             if lmt.line_extension_amount:
-                segments.append({
-                    "tag": "MOA",
-                    "elements": [
-                        {
-                            "components": [
-                                "79",  # Total line items amount
-                                str(lmt.line_extension_amount.value),
-                            ]
-                        },
-                    ],
-                })
+                segments.append(
+                    {
+                        "tag": "MOA",
+                        "elements": [
+                            {
+                                "components": [
+                                    "79",  # Total line items amount
+                                    str(lmt.line_extension_amount.value),
+                                ]
+                            },
+                        ],
+                    }
+                )
             if lmt.tax_exclusive_amount:
-                segments.append({
-                    "tag": "MOA",
-                    "elements": [
-                        {
-                            "components": [
-                                "125",  # Taxable amount
-                                str(lmt.tax_exclusive_amount.value),
-                            ]
-                        },
-                    ],
-                })
+                segments.append(
+                    {
+                        "tag": "MOA",
+                        "elements": [
+                            {
+                                "components": [
+                                    "125",  # Taxable amount
+                                    str(lmt.tax_exclusive_amount.value),
+                                ]
+                            },
+                        ],
+                    }
+                )
             if lmt.payable_amount:
-                segments.append({
-                    "tag": "MOA",
-                    "elements": [
-                        {
-                            "components": [
-                                "9",  # Amount due
-                                str(lmt.payable_amount.value),
-                            ]
-                        },
-                    ],
-                })
+                segments.append(
+                    {
+                        "tag": "MOA",
+                        "elements": [
+                            {
+                                "components": [
+                                    "9",  # Amount due
+                                    str(lmt.payable_amount.value),
+                                ]
+                            },
+                        ],
+                    }
+                )
 
         # TAX - Tax totals
         for tax_total in model.tax_total:
             if tax_total.tax_amount:
-                segments.append({
-                    "tag": "TAX",
-                    "elements": [
-                        "7",  # Tax
-                        "VAT",  # Value added tax
-                    ],
-                })
-                segments.append({
-                    "tag": "MOA",
-                    "elements": [
-                        {"components": ["124", str(tax_total.tax_amount.value)]},
-                    ],
-                })
+                segments.append(
+                    {
+                        "tag": "TAX",
+                        "elements": [
+                            "7",  # Tax
+                            "VAT",  # Value added tax
+                        ],
+                    }
+                )
+                segments.append(
+                    {
+                        "tag": "MOA",
+                        "elements": [
+                            {"components": ["124", str(tax_total.tax_amount.value)]},
+                        ],
+                    }
+                )
 
         # CNT - Control total
-        segments.append({
-            "tag": "CNT",
-            "elements": [
-                {"components": ["2", str(len(model.invoice_lines))]},
-            ],
-        })
+        segments.append(
+            {
+                "tag": "CNT",
+                "elements": [
+                    {"components": ["2", str(len(model.invoice_lines))]},
+                ],
+            }
+        )
 
         return {"message_type": "INVOIC", "segments": segments}
 
-    def _build_party_from_nad(
-        self, nad: "ParsedSegment", group: "SegmentGroupInstance"
-    ) -> Party:
+    def _build_party_from_nad(self, nad: "ParsedSegment", group: "SegmentGroupInstance") -> Party:
         """Build Party from NAD segment and its group."""
         party = Party()
 
@@ -385,9 +399,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         party_id_qualifier = get_component_value(nad, 2, 3)
         if party_id:
             party.party_identifications.append(
-                PartyIdentification(
-                    id=Identifier(value=party_id, scheme_id=party_id_qualifier)
-                )
+                PartyIdentification(id=Identifier(value=party_id, scheme_id=party_id_qualifier))
             )
 
         # Party name from NAD C080
@@ -531,9 +543,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
             item_id_type = get_component_value(lin, 3, 2)
             if item_id:
                 field_type, scheme = map_product_id_qualifier(item_id_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=item_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=item_id, scheme_id=scheme))
                 if field_type == "standard":
                     item.standard_item_identification = ident
                 elif field_type == "sellers":
@@ -547,9 +557,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
             pia_type = get_component_value(pia, 2, 2)
             if pia_id:
                 field_type, scheme = map_product_id_qualifier(pia_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=pia_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=pia_id, scheme_id=scheme))
                 if field_type == "standard" and not item.standard_item_identification:
                     item.standard_item_identification = ident
                 elif field_type == "sellers" and not item.sellers_item_identification:
@@ -568,9 +576,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
 
         return item
 
-    def _parse_monetary_totals(
-        self, content: list, currency: str
-    ) -> MonetaryTotal:
+    def _parse_monetary_totals(self, content: list, currency: str) -> MonetaryTotal:
         """Parse summary MOA segments into MonetaryTotal."""
         totals = MonetaryTotal()
 
@@ -599,9 +605,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
 
         return totals
 
-    def _parse_tax_totals(
-        self, content: list, currency: str
-    ) -> TaxTotal | None:
+    def _parse_tax_totals(self, content: list, currency: str) -> TaxTotal | None:
         """Parse TAX and MOA segments into TaxTotal."""
         tax_amount = None
         tax_subtotals = []
@@ -640,9 +644,7 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
 
         return None
 
-    def _build_nad_segments(
-        self, qualifier: str, party: Party
-    ) -> list[dict]:
+    def _build_nad_segments(self, qualifier: str, party: Party) -> list[dict]:
         """Build NAD segment(s) for a party."""
         segments = []
 
@@ -651,13 +653,15 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         # C082 - Party identification
         if party.party_identifications:
             pi = party.party_identifications[0]
-            elements.append({
-                "components": [
-                    pi.id.value,
-                    "",
-                    pi.id.scheme_id or "92",
-                ],
-            })
+            elements.append(
+                {
+                    "components": [
+                        pi.id.value,
+                        "",
+                        pi.id.scheme_id or "92",
+                    ],
+                }
+            )
         else:
             elements.append("")
 
@@ -686,23 +690,23 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         # RFF for legal entity (VAT number)
         if party.party_legal_entity and party.party_legal_entity.company_id:
             legal = party.party_legal_entity
-            segments.append({
-                "tag": "RFF",
-                "elements": [
-                    {
-                        "components": [
-                            legal.company_id.scheme_id or "VA",
-                            legal.company_id.value,
-                        ]
-                    },
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "RFF",
+                    "elements": [
+                        {
+                            "components": [
+                                legal.company_id.scheme_id or "VA",
+                                legal.company_id.value,
+                            ]
+                        },
+                    ],
+                }
+            )
 
         return segments
 
-    def _build_line_segments(
-        self, line: InvoiceLine, line_num: int, currency: str
-    ) -> list[dict]:
+    def _build_line_segments(self, line: InvoiceLine, line_num: int, currency: str) -> list[dict]:
         """Build segment dicts for a line item."""
         segments = []
 
@@ -715,17 +719,21 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
         # C212 - Item number
         if line.item.standard_item_identification:
             si = line.item.standard_item_identification
-            lin_elements.append({
-                "components": [
-                    si.id.value,
-                    "EN" if si.id.scheme_id == "EAN" else "SA",
-                ],
-            })
+            lin_elements.append(
+                {
+                    "components": [
+                        si.id.value,
+                        "EN" if si.id.scheme_id == "EAN" else "SA",
+                    ],
+                }
+            )
         elif line.item.sellers_item_identification:
             si = line.item.sellers_item_identification
-            lin_elements.append({
-                "components": [si.id.value, "SA"],
-            })
+            lin_elements.append(
+                {
+                    "components": [si.id.value, "SA"],
+                }
+            )
         else:
             lin_elements.append("")
 
@@ -733,55 +741,63 @@ class EdifactInvoiceMapper(SemanticMapper[Invoice]):
 
         # IMD - Item description
         if line.item.description:
-            segments.append({
-                "tag": "IMD",
-                "elements": [
-                    "F",
-                    "",
-                    {"components": ["", "", "", line.item.description]},
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "IMD",
+                    "elements": [
+                        "F",
+                        "",
+                        {"components": ["", "", "", line.item.description]},
+                    ],
+                }
+            )
 
         # QTY - Quantity
-        segments.append({
-            "tag": "QTY",
-            "elements": [
-                {
-                    "components": [
-                        "47",  # Invoiced quantity
-                        str(line.invoiced_quantity.value),
-                        line.invoiced_quantity.unit_code,
-                    ]
-                },
-            ],
-        })
+        segments.append(
+            {
+                "tag": "QTY",
+                "elements": [
+                    {
+                        "components": [
+                            "47",  # Invoiced quantity
+                            str(line.invoiced_quantity.value),
+                            line.invoiced_quantity.unit_code,
+                        ]
+                    },
+                ],
+            }
+        )
 
         # PRI - Price
         if line.price:
-            segments.append({
-                "tag": "PRI",
-                "elements": [
-                    {
-                        "components": [
-                            "AAA",
-                            str(line.price.price_amount.value),
-                        ]
-                    },
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "PRI",
+                    "elements": [
+                        {
+                            "components": [
+                                "AAA",
+                                str(line.price.price_amount.value),
+                            ]
+                        },
+                    ],
+                }
+            )
 
         # MOA - Line amount
         if line.line_extension_amount:
-            segments.append({
-                "tag": "MOA",
-                "elements": [
-                    {
-                        "components": [
-                            "203",
-                            str(line.line_extension_amount.value),
-                        ]
-                    },
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "MOA",
+                    "elements": [
+                        {
+                            "components": [
+                                "203",
+                                str(line.line_extension_amount.value),
+                            ]
+                        },
+                    ],
+                }
+            )
 
         return segments

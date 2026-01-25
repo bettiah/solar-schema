@@ -14,13 +14,22 @@ from edi_schema.semantic.mappers.x12 import (
     X12InvoiceMapper,
     X12OrderMapper,
 )
+from edi_schema.semantic.mappers.x12.utils import (
+    format_x12_amount,
+    format_x12_date,
+    format_x12_time,
+    map_id_qualifier,
+    map_n1_party_code,
+    map_product_id_qualifier,
+    parse_decimal,
+    parse_x12_amount,
+    parse_x12_date,
+    parse_x12_time,
+)
 from edi_schema.semantic.models import (
     Address,
-    AllowanceCharge,
     Amount,
-    Contact,
     CustomerParty,
-    Delivery,
     DespatchAdvice,
     DespatchLine,
     Identifier,
@@ -34,36 +43,21 @@ from edi_schema.semantic.models import (
     Party,
     PartyIdentification,
     PartyName,
-    PaymentTerms,
     Price,
     Quantity,
     Shipment,
     SupplierParty,
 )
-from edi_schema.semantic.mappers.x12.utils import (
-    parse_x12_date,
-    parse_x12_time,
-    parse_x12_amount,
-    parse_decimal,
-    format_x12_date,
-    format_x12_time,
-    format_x12_amount,
-    map_n1_party_code,
-    map_product_id_qualifier,
-    map_id_qualifier,
-)
 from edi_schema.x12.ast import (
+    HLNode,
     LoopInstance,
     ParsedElement,
     ParsedSegment,
-    RawComposite,
     RawElement,
     RawSegment,
     SourcePosition,
     TransactionSetInstance,
-    HLNode,
 )
-
 
 # =============================================================================
 # Test Fixtures - Mock X12 AST Building Helpers
@@ -94,14 +88,13 @@ def make_raw_segment(tag: str, values: list[str]) -> RawSegment:
 def make_parsed_segment(tag: str, values: list[str]) -> ParsedSegment:
     """Create a ParsedSegment from tag and element values."""
     raw = make_raw_segment(tag, values)
-    elements = [
-        ParsedElement(value=v, raw=raw.elements[i])
-        for i, v in enumerate(values)
-    ]
+    elements = [ParsedElement(value=v, raw=raw.elements[i]) for i, v in enumerate(values)]
     return ParsedSegment(tag=tag, elements=elements, raw=raw)
 
 
-def make_loop(loop_id: str, segments: list[ParsedSegment], children: list[LoopInstance] = None) -> LoopInstance:
+def make_loop(
+    loop_id: str, segments: list[ParsedSegment], children: list[LoopInstance] = None
+) -> LoopInstance:
     """Create a LoopInstance."""
     return LoopInstance(
         loop_id=loop_id,
@@ -146,12 +139,14 @@ class TestX12UtilityFunctions:
     def test_parse_x12_time_4char(self):
         """Test parsing HHMM format."""
         from datetime import time
+
         result = parse_x12_time("1430")
         assert result == time(14, 30)
 
     def test_parse_x12_time_6char(self):
         """Test parsing HHMMSS format."""
         from datetime import time
+
         result = parse_x12_time("143025")
         assert result == time(14, 30, 25)
 
@@ -189,6 +184,7 @@ class TestX12UtilityFunctions:
     def test_format_x12_time(self):
         """Test formatting time to X12."""
         from datetime import time
+
         result = format_x12_time(time(14, 30))
         assert result == "1430"
 
@@ -235,67 +231,91 @@ class TestX12OrderMapper:
     def simple_850_transaction(self) -> TransactionSetInstance:
         """Create a simple 850 transaction for testing."""
         # BEG segment
-        beg = make_parsed_segment("BEG", [
-            "00",        # BEG01 - Purpose Code (00=Original)
-            "SA",        # BEG02 - Order Type Code (SA=Stand-alone)
-            "PO12345",   # BEG03 - PO Number
-            "",          # BEG04 - Release Number
-            "20241215",  # BEG05 - Date
-        ])
+        beg = make_parsed_segment(
+            "BEG",
+            [
+                "00",  # BEG01 - Purpose Code (00=Original)
+                "SA",  # BEG02 - Order Type Code (SA=Stand-alone)
+                "PO12345",  # BEG03 - PO Number
+                "",  # BEG04 - Release Number
+                "20241215",  # BEG05 - Date
+            ],
+        )
 
         # CUR segment (optional)
-        cur = make_parsed_segment("CUR", [
-            "BY",   # CUR01 - Entity ID
-            "USD",  # CUR02 - Currency Code
-        ])
+        cur = make_parsed_segment(
+            "CUR",
+            [
+                "BY",  # CUR01 - Entity ID
+                "USD",  # CUR02 - Currency Code
+            ],
+        )
 
         # N1 loop for Buyer
-        n1_by = make_parsed_segment("N1", [
-            "BY",            # N1*01 - Entity ID Code
-            "Acme Corp",     # N1*02 - Name
-            "92",            # N1*03 - ID Qualifier (Buyer Assigned)
-            "ACME001",       # N1*04 - ID Value
-        ])
-        n3_by = make_parsed_segment("N3", [
-            "123 Main Street",   # N3*01 - Street
-            "Suite 100",         # N3*02 - Additional
-        ])
-        n4_by = make_parsed_segment("N4", [
-            "Chicago",   # N4*01 - City
-            "IL",        # N4*02 - State
-            "60601",     # N4*03 - Postal
-            "US",        # N4*04 - Country
-        ])
+        n1_by = make_parsed_segment(
+            "N1",
+            [
+                "BY",  # N1*01 - Entity ID Code
+                "Acme Corp",  # N1*02 - Name
+                "92",  # N1*03 - ID Qualifier (Buyer Assigned)
+                "ACME001",  # N1*04 - ID Value
+            ],
+        )
+        n3_by = make_parsed_segment(
+            "N3",
+            [
+                "123 Main Street",  # N3*01 - Street
+                "Suite 100",  # N3*02 - Additional
+            ],
+        )
+        n4_by = make_parsed_segment(
+            "N4",
+            [
+                "Chicago",  # N4*01 - City
+                "IL",  # N4*02 - State
+                "60601",  # N4*03 - Postal
+                "US",  # N4*04 - Country
+            ],
+        )
         buyer_loop = make_loop("N1", [n1_by, n3_by, n4_by])
 
         # N1 loop for Seller
-        n1_se = make_parsed_segment("N1", [
-            "SE",             # N1*01
-            "Widget Supplier", # N1*02
-            "1",              # N1*03 - DUNS
-            "123456789",      # N1*04
-        ])
+        n1_se = make_parsed_segment(
+            "N1",
+            [
+                "SE",  # N1*01
+                "Widget Supplier",  # N1*02
+                "1",  # N1*03 - DUNS
+                "123456789",  # N1*04
+            ],
+        )
         seller_loop = make_loop("N1", [n1_se])
 
         # PO1 loop - Line Item
-        po1 = make_parsed_segment("PO1", [
-            "1",        # PO1*01 - Line Number
-            "10",       # PO1*02 - Quantity
-            "EA",       # PO1*03 - Unit
-            "25.00",    # PO1*04 - Unit Price
-            "",         # PO1*05 - Basis
-            "UP",       # PO1*06 - Product ID Qualifier (UPC)
-            "012345678901",  # PO1*07 - UPC
-            "VP",       # PO1*08 - Vendor Part qualifier
-            "WIDGET-001",   # PO1*09 - Vendor Part
-        ])
-        pid = make_parsed_segment("PID", [
-            "F",           # PID*01 - Item Description Type
-            "",            # PID*02
-            "",            # PID*03
-            "",            # PID*04
-            "Industrial Widget",  # PID*05 - Description
-        ])
+        po1 = make_parsed_segment(
+            "PO1",
+            [
+                "1",  # PO1*01 - Line Number
+                "10",  # PO1*02 - Quantity
+                "EA",  # PO1*03 - Unit
+                "25.00",  # PO1*04 - Unit Price
+                "",  # PO1*05 - Basis
+                "UP",  # PO1*06 - Product ID Qualifier (UPC)
+                "012345678901",  # PO1*07 - UPC
+                "VP",  # PO1*08 - Vendor Part qualifier
+                "WIDGET-001",  # PO1*09 - Vendor Part
+            ],
+        )
+        pid = make_parsed_segment(
+            "PID",
+            [
+                "F",  # PID*01 - Item Description Type
+                "",  # PID*02
+                "",  # PID*03
+                "",  # PID*04
+                "Industrial Widget",  # PID*05 - Description
+            ],
+        )
         line_loop = make_loop("PO1", [po1, pid])
 
         # CTT segment
@@ -448,44 +468,56 @@ class TestX12InvoiceMapper:
     def simple_810_transaction(self) -> TransactionSetInstance:
         """Create a simple 810 transaction for testing."""
         # BIG segment
-        big = make_parsed_segment("BIG", [
-            "20241220",   # BIG01 - Invoice Date
-            "INV-001",    # BIG02 - Invoice Number
-            "20241215",   # BIG03 - PO Date
-            "PO12345",    # BIG04 - PO Number
-        ])
+        big = make_parsed_segment(
+            "BIG",
+            [
+                "20241220",  # BIG01 - Invoice Date
+                "INV-001",  # BIG02 - Invoice Number
+                "20241215",  # BIG03 - PO Date
+                "PO12345",  # BIG04 - PO Number
+            ],
+        )
 
         # CUR segment
         cur = make_parsed_segment("CUR", ["SE", "USD"])
 
         # N1 loop for Seller
-        n1_se = make_parsed_segment("N1", [
-            "SE",
-            "Widget Supplier",
-            "1",
-            "123456789",
-        ])
+        n1_se = make_parsed_segment(
+            "N1",
+            [
+                "SE",
+                "Widget Supplier",
+                "1",
+                "123456789",
+            ],
+        )
         seller_loop = make_loop("N1", [n1_se])
 
         # N1 loop for Buyer
-        n1_by = make_parsed_segment("N1", [
-            "BY",
-            "Acme Corp",
-            "92",
-            "ACME001",
-        ])
+        n1_by = make_parsed_segment(
+            "N1",
+            [
+                "BY",
+                "Acme Corp",
+                "92",
+                "ACME001",
+            ],
+        )
         buyer_loop = make_loop("N1", [n1_by])
 
         # IT1 loop - Line Item
-        it1 = make_parsed_segment("IT1", [
-            "1",        # IT1*01 - Line Number
-            "10",       # IT1*02 - Quantity Invoiced
-            "EA",       # IT1*03 - Unit
-            "25.00",    # IT1*04 - Unit Price
-            "",         # IT1*05 - Basis
-            "UP",       # IT1*06 - UPC qualifier
-            "012345678901",  # IT1*07 - UPC
-        ])
+        it1 = make_parsed_segment(
+            "IT1",
+            [
+                "1",  # IT1*01 - Line Number
+                "10",  # IT1*02 - Quantity Invoiced
+                "EA",  # IT1*03 - Unit
+                "25.00",  # IT1*04 - Unit Price
+                "",  # IT1*05 - Basis
+                "UP",  # IT1*06 - UPC qualifier
+                "012345678901",  # IT1*07 - UPC
+            ],
+        )
         line_loop = make_loop("IT1", [it1])
 
         # TDS segment - Total amount
@@ -608,30 +640,42 @@ class TestX12DespatchAdviceMapper:
     def simple_856_transaction(self) -> TransactionSetInstance:
         """Create a simple 856 transaction for testing."""
         # BSN segment
-        bsn = make_parsed_segment("BSN", [
-            "00",         # BSN01 - Purpose
-            "ASN-001",    # BSN02 - Shipment ID
-            "20241218",   # BSN03 - Date
-            "1430",       # BSN04 - Time
-        ])
+        bsn = make_parsed_segment(
+            "BSN",
+            [
+                "00",  # BSN01 - Purpose
+                "ASN-001",  # BSN02 - Shipment ID
+                "20241218",  # BSN03 - Date
+                "1430",  # BSN04 - Time
+            ],
+        )
 
         # Build HL hierarchy
         # HL for Shipment level
-        hl_ship = make_parsed_segment("HL", [
-            "1",   # HL01 - ID
-            "",    # HL02 - Parent (none for root)
-            "S",   # HL03 - Level Code (Shipment)
-            "1",   # HL04 - Has children
-        ])
-        td1 = make_parsed_segment("TD1", [
-            "CTN",  # TD1*01 - Packaging Code
-            "5",    # TD1*02 - Lading Quantity
-        ])
-        td5 = make_parsed_segment("TD5", [
-            "B",      # TD5*01 - Routing Sequence
-            "2",      # TD5*02 - ID Code Qualifier
-            "FEDX",   # TD5*03 - Carrier ID
-        ])
+        hl_ship = make_parsed_segment(
+            "HL",
+            [
+                "1",  # HL01 - ID
+                "",  # HL02 - Parent (none for root)
+                "S",  # HL03 - Level Code (Shipment)
+                "1",  # HL04 - Has children
+            ],
+        )
+        td1 = make_parsed_segment(
+            "TD1",
+            [
+                "CTN",  # TD1*01 - Packaging Code
+                "5",  # TD1*02 - Lading Quantity
+            ],
+        )
+        td5 = make_parsed_segment(
+            "TD5",
+            [
+                "B",  # TD5*01 - Routing Sequence
+                "2",  # TD5*02 - ID Code Qualifier
+                "FEDX",  # TD5*03 - Carrier ID
+            ],
+        )
 
         # N1 loop for Ship From
         n1_sf = make_parsed_segment("N1", ["SF", "Warehouse Alpha", "92", "WH001"])
@@ -640,36 +684,51 @@ class TestX12DespatchAdviceMapper:
         sf_loop = make_loop("N1", [n1_sf, n3_sf, n4_sf])
 
         # HL for Order level
-        hl_order = make_parsed_segment("HL", [
-            "2",   # HL01 - ID
-            "1",   # HL02 - Parent (shipment)
-            "O",   # HL03 - Level Code (Order)
-            "1",   # HL04 - Has children
-        ])
-        prf = make_parsed_segment("PRF", [
-            "PO12345",    # PRF*01 - PO Number
-            "",           # PRF*02
-            "",           # PRF*03
-            "20241215",   # PRF*04 - PO Date
-        ])
+        hl_order = make_parsed_segment(
+            "HL",
+            [
+                "2",  # HL01 - ID
+                "1",  # HL02 - Parent (shipment)
+                "O",  # HL03 - Level Code (Order)
+                "1",  # HL04 - Has children
+            ],
+        )
+        prf = make_parsed_segment(
+            "PRF",
+            [
+                "PO12345",  # PRF*01 - PO Number
+                "",  # PRF*02
+                "",  # PRF*03
+                "20241215",  # PRF*04 - PO Date
+            ],
+        )
 
         # HL for Item level
-        hl_item = make_parsed_segment("HL", [
-            "3",   # HL01 - ID
-            "2",   # HL02 - Parent (order)
-            "I",   # HL03 - Level Code (Item)
-            "0",   # HL04 - No children
-        ])
-        lin = make_parsed_segment("LIN", [
-            "",            # LIN*01 - Line Number
-            "UP",          # LIN*02 - UPC qualifier
-            "012345678901",  # LIN*03 - UPC
-        ])
-        sn1 = make_parsed_segment("SN1", [
-            "",     # SN1*01 - Line Number
-            "10",   # SN1*02 - Quantity Shipped
-            "EA",   # SN1*03 - Unit
-        ])
+        hl_item = make_parsed_segment(
+            "HL",
+            [
+                "3",  # HL01 - ID
+                "2",  # HL02 - Parent (order)
+                "I",  # HL03 - Level Code (Item)
+                "0",  # HL04 - No children
+            ],
+        )
+        lin = make_parsed_segment(
+            "LIN",
+            [
+                "",  # LIN*01 - Line Number
+                "UP",  # LIN*02 - UPC qualifier
+                "012345678901",  # LIN*03 - UPC
+            ],
+        )
+        sn1 = make_parsed_segment(
+            "SN1",
+            [
+                "",  # SN1*01 - Line Number
+                "10",  # SN1*02 - Quantity Shipped
+                "EA",  # SN1*03 - Unit
+            ],
+        )
 
         # Build HL tree
         item_node = HLNode(

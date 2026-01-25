@@ -113,7 +113,9 @@ class EdifactReceiptAdviceMapper(SemanticMapper[ReceiptAdvice]):
         # Parse line items from SG16 (CPS groups containing SG22/LIN)
         for sg16 in find_all_segment_groups(content, 16):
             # Look for SG22 within SG16
-            for sg22 in find_all_segment_groups(sg16.content if hasattr(sg16, "content") else [], 22):
+            for sg22 in find_all_segment_groups(
+                sg16.content if hasattr(sg16, "content") else [], 22
+            ):
                 line = self._parse_line_group(sg22, len(receipt.receipt_lines) + 1)
                 if line:
                     receipt.receipt_lines.append(line)
@@ -189,9 +191,7 @@ class EdifactReceiptAdviceMapper(SemanticMapper[ReceiptAdvice]):
         elif party_qualifier == "DP":  # Delivery Party
             receipt.delivery_customer_party = CustomerParty(party=party)
 
-    def _parse_line_group(
-        self, group: "SegmentGroupInstance", line_num: int
-    ) -> ReceiptLine | None:
+    def _parse_line_group(self, group: "SegmentGroupInstance", line_num: int) -> ReceiptLine | None:
         """Parse LIN group into ReceiptLine."""
         lin = find_segment_in_group(group, "LIN")
         if not lin:
