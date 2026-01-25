@@ -63,12 +63,16 @@ This project provides tooling to:
 
 ## Core Component
 [x12 schemas](/Users/me/Downloads/edi/schema/x12/005010/)
-[x12_schema_plan.md](plans/x12_schema_plan.md)
+[x12_plan.md](plans/x12_plan.md)
 [x12.md](plans/x12.md)
 
 [edifact schemas](/Users/me/Downloads/edi/schema/edifact/d23a/)
 [edifact_plan.md](plans/edifact_plan.md)
 [edifact.md](plans/edifact.md)
+
+[ubl schemas](/Users/me/Downloads/edi/ubl/UBL-2.5/)
+[ubl_plan.md](plans/ubl_plan.md)
+[ubl.md](plans/edifact.md)
 
 ### Schema Definitions
 

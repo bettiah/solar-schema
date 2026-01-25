@@ -14,6 +14,7 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
     "ruff>=0.14.14",
+    "syrupy>=5.1.0",
     "taskipy>=1.14.1",
 ]
 
