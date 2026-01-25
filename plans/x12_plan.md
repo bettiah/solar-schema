@@ -4,7 +4,7 @@
 
 A Python library for parsing X12 schema definitions, parsing X12 EDI documents, validating them, and generating acknowledgments.
 
-**Tests:** 1,328 passing | **Versions:** 005010, 004010
+**Tests:** 1,377 passing | **Versions:** 005010, 004010
 
 ---
 
@@ -31,6 +31,7 @@ Schema Definition Files (005010/, 004010/)
 ┌─────────────────────────────────────────────────────────┐
 │                       X12Schema                         │
 │  transaction_set + segments + elements + composites     │
+│  + loop_hierarchy (pre-built, cached)                   │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -40,26 +41,33 @@ Schema Definition Files (005010/, 004010/)
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│                   1. TOKENIZER                          │
-│  Extract delimiters from ISA, split into segments       │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                 2. ENVELOPE PARSER                      │
-│  Parse ISA/IEA, GS/GE, ST/SE hierarchy                  │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              3. TRANSACTION PARSER                      │
-│  Match segments to schema, build loop hierarchy         │
+│              DOCUMENT PARSER (High-Level API)           │
+│  parse_file() / parse() / parse_with_schema()           │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │                 1. TOKENIZER                     │   │
+│  │  Extract delimiters from ISA, split into segs   │   │
+│  └─────────────────────────────────────────────────┘   │
+│                          │                              │
+│                          ▼                              │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │               2. ENVELOPE PARSER                │   │
+│  │  Parse ISA/IEA, GS/GE, ST/SE hierarchy          │   │
+│  └─────────────────────────────────────────────────┘   │
+│                          │                              │
+│                          ▼                              │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │            3. TRANSACTION PARSER                │   │
+│  │  bind_schemas() - Match to schema, build loops  │   │
+│  │  Uses pre-built loop_hierarchy from X12Schema   │   │
+│  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │                   4. VALIDATOR                          │
 │  Structural → Envelope → Schema → Element → Code        │
+│  Uses pre-built loop_hierarchy from X12Schema           │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -95,6 +103,7 @@ src/edi_schema/x12/
 │   └── templates/            # Jinja2 templates
 ├── ast.py                    # AST node types, error types
 ├── parser/
+│   ├── document.py           # High-level API: parse_file, parse, bind_schemas
 │   ├── tokenizer.py          # Delimiter extraction, segmentation
 │   ├── envelope.py           # ISA/GS/ST envelope parsing
 │   ├── loop_hierarchy.py     # Loop tree from schema
@@ -167,6 +176,7 @@ class X12Schema:
     composites: dict[str, Composite]
     code_sources: dict[str, CodeSource]
     version: str = "005010"
+    loop_hierarchy: LoopNode | None = None  # Pre-built, cached on load
 ```
 
 ### Schema API
@@ -208,6 +218,49 @@ task codegen-all       # Generate all versions
 - `Delimiters` - Element/component/segment separators
 - `ParseError` - Error with code, category, severity, recovery point
 
+### High-Level Document Parser API
+
+The document parser (`parser/document.py`) provides a clean, one-shot API similar to UBL:
+
+| Function | Description |
+|----------|-------------|
+| `parse_file(path, schema_loader)` | One-shot file parsing with optional schema binding |
+| `parse(source)` | Parse without schema binding (content = `RawSegment`) |
+| `parse_with_schema(source, loader)` | Parse with schema binding (content = `ParsedSegment`/`LoopInstance`) |
+| `bind_schemas(result, loader)` | Bind schemas to already-parsed document |
+
+**SchemaLoader Protocol:**
+```python
+class SchemaLoader(Protocol):
+    def load(self, transaction_id: str) -> X12Schema: ...
+    def exists(self, transaction_id: str) -> bool: ...
+```
+
+Both `X12SchemaLoader` and `GeneratedX12SchemaLoader` implement this protocol.
+
+**Data Flow:**
+```
+parse_file(path, loader)
+    │
+    ├─► parse(source)
+    │       │
+    │       ├─► X12Tokenizer.tokenize()
+    │       │
+    │       └─► EnvelopeParser.parse()
+    │               │
+    │               └─► ParseResult with RawSegment content
+    │
+    └─► bind_schemas(result, loader)
+            │
+            ├─► For each transaction:
+            │       │
+            │       ├─► loader.load(txn_id) → X12Schema (with loop_hierarchy)
+            │       │
+            │       └─► TransactionParser.parse() → ParsedSegment/LoopInstance
+            │
+            └─► ParseResult with structured content
+```
+
 ### Tokenizer
 
 - ISA segment fixed-width parsing (106 chars)
@@ -231,9 +284,148 @@ task codegen-all       # Generate all versions
 
 ### Loop Hierarchy
 
-- `LoopNode` - Tree node with loop_id, level, max_repeat, segments, children
-- `LoopHierarchyBuilder` - Builds tree from flat `TransactionSet.structure`
-- `LoopMatcher` - Matches segments to loop positions, handles iterations
+X12 has three distinct loop types, each requiring different parsing strategies:
+
+| Loop Type | Delimited By | Schema Required? | Implementation |
+|-----------|--------------|------------------|----------------|
+| **Bounded (LS/LE)** | Explicit `LS`/`LE` segments | No | Not yet implemented |
+| **Unbounded/Schema** | Schema-defined triggers | **Yes** | `LoopMatcher` |
+| **HL Hierarchical** | `HL` segment parent refs | Partial | `HLParser` |
+
+#### Data Flow
+
+**With High-Level API (`parse_file`):**
+```
+parse_file(path, schema_loader)
+         ↓
+    parse(source)
+         ↓
+    Tokenizer → Envelope Parser
+         ↓
+    ParseResult with RawSegment content
+         ↓
+    bind_schemas(result, schema_loader)
+         ↓
+    For each transaction:
+         ↓
+    schema_loader.load(txn_id) → X12Schema
+         │                        (with loop_hierarchy cached)
+         ↓
+    TransactionParser.parse()
+         │
+    Uses schema.loop_hierarchy (pre-built)
+         ↓
+    ParsedSegment / LoopInstance content
+```
+
+**TransactionParser Internal Flow:**
+```
+TransactionParser.parse(segments)
+         ↓
+  ┌──────┴──────┬───────────────┐
+  ↓             ↓               ↓
+_parse_     _parse_with_    _parse_
+with_hl     _schema         without_schema
+  ↓             ↓               ↓
+HLParser    LoopMatcher     Simple list
+  ↓             ↓               ↓
+HLNode →    LoopInstance    ParsedSegments
+LoopInstance    tree            ↓
+  tree    ──────┴───────────────┘
+                ↓
+         SchemaValidator
+         (uses schema.loop_hierarchy)
+                ↓
+         Validate cardinality
+```
+
+#### Core Types
+
+**LoopNode** (`loop_hierarchy.py`) - Schema definition of a loop:
+```python
+@dataclass
+class LoopNode:
+    loop_id: str           # e.g., "N1", "PO1"
+    level: int             # Nesting depth (0=root, 1=first level, 2=nested)
+    max_repeat: int        # Max iterations (-1 = unlimited)
+    segments: list         # Schema segments directly in this loop
+    children: list         # Nested child LoopNodes
+    _segment_set: set      # Fast lookup cache
+```
+
+**LoopInstance** (`ast.py`) - Runtime parsed loop:
+```python
+@dataclass
+class LoopInstance:
+    loop_id: str           # Which loop this is
+    iteration: int         # Which iteration (1, 2, 3, etc.)
+    segments: list         # ParsedSegments in this loop
+    children: list         # Nested child LoopInstances
+    hl_level_code: str     # For HL-based loops only
+```
+
+#### LoopHierarchyBuilder
+
+Builds nested `LoopNode` tree from flat `TransactionSet.structure`:
+
+1. Processes segments in order from setdetl.txt
+2. Uses `loop_level` column to track nesting depth
+3. When segment has `loop_id`, starts new loop at that level
+4. Segments without `loop_id` belong to current loop
+5. Maintains stack to track active loops at each level
+
+**Caching:** The `loop_hierarchy` is built once when loading a schema via `GeneratedX12SchemaLoader.load()` and cached on the `X12Schema.loop_hierarchy` field. Both `TransactionParser` and `SchemaValidator` use the pre-built hierarchy from the schema instead of rebuilding it.
+
+#### LoopMatcher - 7-Step Matching Algorithm
+
+When parsing a segment, tries these actions in order:
+
+| Priority | Action | Description |
+|----------|--------|-------------|
+| 1 | `ACCEPT` | Segment at expected next position |
+| 2 | `ACCEPT_OUT_OF_ORDER` | Valid segment but wrong order within loop |
+| 3 | `ENTER_CHILD_LOOP` | Segment starts nested child loop |
+| 4 | `NEW_ITERATION` | Segment matches first segment of loop (new iteration) |
+| 5 | `POP_TO_PARENT` | Segment belongs to parent loop (current ended) |
+| 6 | `ENTER_SIBLING_LOOP` | Pop and start sibling at parent level |
+| 7 | `UNKNOWN_SEGMENT` | No match (error) |
+
+#### HLParser - Dynamic Hierarchy
+
+For HL-based transactions (837, 856, 270, 271, 278):
+
+**HLNode** (`transaction.py`):
+```python
+@dataclass
+class HLNode:
+    id: str              # HL01: Hierarchical ID
+    parent_id: str       # HL02: Parent ID (empty for roots)
+    level_code: str      # HL03: Level code (20, 22, S, O, P, I, etc.)
+    child_code: str      # HL04: Has children? (0=no, 1=yes)
+    hl_segment: RawSegment
+    content_segments: list  # Segments until next HL
+    children: list[HLNode]
+```
+
+**Validation checks:**
+- HL01 not empty → error code `HL01`
+- No duplicate IDs → error code `HL02`
+- Parent ID exists → error code `HL03` (recovers as root)
+
+After building HLNode tree, converts to standard `LoopInstance` format.
+
+#### Loop Cardinality Validation
+
+Validated at two points:
+
+1. **During Parsing** (`transaction.py`):
+   - On `NEW_ITERATION`, checks `iteration > max_repeat`
+   - Generates error code `SCH02`
+
+2. **During Validation** (`validator/schema.py`):
+   - Counts `LoopInstance` occurrences in tree
+   - Checks against `max_repeat` from loop_hierarchy
+   - Generates error code `4` (Loop occurs over maximum times)
 
 ---
 
@@ -300,21 +492,31 @@ class RecoveryPoint(Enum):
 
 ## Usage Example
 
+### Recommended: High-Level API (parse_file)
+
 ```python
-from edi_schema.x12.parser import tokenize, parse_envelope
-from edi_schema.x12.validator import X12Validator, ValidationLevel
+from pathlib import Path
+from edi_schema.x12.parser import parse_file
 from edi_schema.x12.schemas import GeneratedX12SchemaLoader
+from edi_schema.x12.validator import X12Validator, ValidationLevel
 from edi_schema.x12.ack import generate_997
+from edi_schema.x12.ast import LoopInstance, ParsedSegment
 
-# Load schema
+# One-shot parsing with schema binding
 loader = GeneratedX12SchemaLoader(version="005010")
-schema = loader.load("837")
+result = parse_file(Path("837P.x12"), schema_loader=loader)
 
-# Parse document
-content = open("837P.x12").read()
-result = parse_envelope(tokenize(content))
+# Content is now properly parsed with loop structure
+for group in result.interchange.groups:
+    for txn in group.transactions:
+        print(f"Transaction {txn.transaction_id}")
+        for item in txn.content:
+            if isinstance(item, LoopInstance):
+                print(f"  Loop: {item.loop_id} (iteration {item.iteration})")
+            elif isinstance(item, ParsedSegment):
+                print(f"  Segment: {item.tag}")
 
-# Validate
+# Validate (works on already-parsed content)
 validator = X12Validator(
     schema_loader=loader,
     levels={ValidationLevel.SCHEMA, ValidationLevel.ELEMENT, ValidationLevel.CODE},
@@ -331,6 +533,28 @@ for group in result.interchange.groups:
     print(ack)
 ```
 
+### Alternative: Step-by-Step API
+
+```python
+from edi_schema.x12.parser import parse, bind_schemas
+
+# Parse without schema (content will be RawSegment)
+result = parse(Path("837P.x12"))
+
+# Later, bind schemas (converts to ParsedSegment/LoopInstance)
+bind_schemas(result, loader)
+```
+
+### Low-Level: Manual Pipeline
+
+```python
+from edi_schema.x12.parser import tokenize, parse_envelope
+
+# Manual tokenize + envelope parse (content stays as RawSegment)
+content = open("837P.x12").read()
+result = parse_envelope(tokenize(content))
+```
+
 ---
 
 ## Design Decisions
@@ -344,6 +568,10 @@ for group in result.interchange.groups:
 | HL as runtime hierarchy | 837/856 documents define structure at runtime, not schema |
 | Separate validation levels | Allows selective validation, maps to 997 error codes |
 | `>1` for unlimited | Schema files use ">1" to indicate unlimited repetition |
+| `loop_hierarchy` cached on schema | Build once on load, reuse in TransactionParser and SchemaValidator |
+| `parse_file()` high-level API | One-shot parsing like UBL; combines tokenizer, envelope, and transaction parsing |
+| `SchemaLoader` protocol | Unified interface for both runtime and generated schema loaders |
+| `bind_schemas()` separate step | Allows parsing once and re-binding with different schemas if needed |
 
 ---
 

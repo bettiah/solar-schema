@@ -92,7 +92,11 @@ class SchemaValidator:
 
     def __init__(self, schema: "X12Schema"):
         self.schema = schema
-        self.loop_hierarchy = build_loop_hierarchy(schema)
+        # Use pre-built loop_hierarchy from schema if available
+        if hasattr(schema, "loop_hierarchy") and schema.loop_hierarchy is not None:
+            self.loop_hierarchy = schema.loop_hierarchy
+        else:
+            self.loop_hierarchy = build_loop_hierarchy(schema)
         self.errors: list[ParseError] = []
         self.tracker = SegmentTracker()
 

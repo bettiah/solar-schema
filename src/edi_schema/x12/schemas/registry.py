@@ -12,6 +12,7 @@ from edi_schema.x12.models import (
     Segment,
     TransactionSet,
 )
+from edi_schema.x12.parser.loop_hierarchy import LoopNode, build_loop_hierarchy
 
 if TYPE_CHECKING:
     from edi_schema.x12.schema import X12Schema
@@ -162,13 +163,18 @@ def get_schema(
                     if data_elem:
                         elements[elem_id] = data_elem
 
-    return X12Schema(
+    schema = X12Schema(
         transaction_set=txn,
         segments=segments,
         elements=elements,
         composites=composites,
         version=version,
     )
+
+    # Build loop hierarchy once and cache it on the schema
+    schema.loop_hierarchy = build_loop_hierarchy(schema)
+
+    return schema
 
 
 class GeneratedX12SchemaLoader:

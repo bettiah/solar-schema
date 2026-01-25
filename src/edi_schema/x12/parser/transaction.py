@@ -320,7 +320,11 @@ class TransactionParser:
         self.state: TransactionParserState = TransactionParserState()
 
         if schema:
-            self.loop_hierarchy = build_loop_hierarchy(schema)
+            # Use pre-built loop_hierarchy from schema if available
+            if schema.loop_hierarchy is not None:
+                self.loop_hierarchy = schema.loop_hierarchy
+            else:
+                self.loop_hierarchy = build_loop_hierarchy(schema)
             self.matcher = LoopMatcher(self.loop_hierarchy)
 
     def parse(

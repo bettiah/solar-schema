@@ -12,6 +12,7 @@ Implements the interface expected by SchemaRepository:
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from edi_schema.x12.enums import (
     DataElementType,
@@ -46,6 +47,9 @@ from edi_schema.x12.schema_parsers import (
     parse_sethead,
 )
 
+if TYPE_CHECKING:
+    from edi_schema.x12.parser.loop_hierarchy import LoopNode
+
 
 @dataclass
 class X12Schema:
@@ -69,6 +73,7 @@ class X12Schema:
     composites: dict[str, Composite] = field(default_factory=dict)
     code_sources: dict[str, CodeSource] = field(default_factory=dict)
     version: str = "005010"
+    loop_hierarchy: "LoopNode | None" = None
 
     @property
     def format(self) -> str:
