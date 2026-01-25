@@ -164,64 +164,52 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         segments = []
 
         # BGM - Beginning of message
-        segments.append({
-            "tag": "BGM",
-            "elements": [
-                {"value": model.despatch_advice_type_code or "351"},
-                {"components": [model.id]},
-                "9",  # Original
-            ],
-        })
+        segments.append(
+            {
+                "tag": "BGM",
+                "elements": [
+                    {"value": model.despatch_advice_type_code or "351"},
+                    {"components": [model.id]},
+                    "9",  # Original
+                ],
+            }
+        )
 
         # DTM - Document date
-        segments.append({
-            "tag": "DTM",
-            "elements": [
-                {
-                    "components": [
-                        "137",
-                        format_edifact_date(model.issue_date),
-                        "102",
-                    ]
-                },
-            ],
-        })
-
-        # DTM - Despatch/ship date
-        if model.shipment and model.shipment.actual_despatch_date:
-            segments.append({
+        segments.append(
+            {
                 "tag": "DTM",
                 "elements": [
                     {
                         "components": [
-                            "11",  # Despatch date
-                            format_edifact_date(model.shipment.actual_despatch_date),
+                            "137",
+                            format_edifact_date(model.issue_date),
                             "102",
                         ]
                     },
                 ],
-            })
+            }
+        )
 
         # RFF - Order reference
-        if model.order_reference:
-            segments.append({
-                "tag": "RFF",
-                "elements": [
-                    {"components": ["ON", model.order_reference.id]},
-                ],
-            })
+        if model.order_references:
+            order_ref = model.order_references[0]
+            segments.append(
+                {
+                    "tag": "RFF",
+                    "elements": [
+                        {"components": ["ON", order_ref.id]},
+                    ],
+                }
+            )
 
         # NAD - Despatch party (supplier)
         if model.despatch_supplier_party:
-            segments.extend(
-                self._build_nad_segments("SF", model.despatch_supplier_party.party)
-            )
+            segments.extend(self._build_nad_segments("SF", model.despatch_supplier_party.party))
 
         # NAD - Delivery party (customer)
         if model.delivery_customer_party:
-            segments.extend(
-                self._build_nad_segments("UC", model.delivery_customer_party.party)
-            )
+            segments.extend(self._build_nad_segments("UC", model.delivery_customer_party.party))
 
         # TDT - Transport details
         if model.shipment and model.shipment.shipment_stages:
@@ -236,25 +224,27 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         # CPS + LIN groups - Line items
         for i, line in enumerate(model.despatch_lines, 1):
             # CPS - Consignment packing sequence
-            segments.append({
-                "tag": "CPS",
-                "elements": [str(i)],
-            })
+            segments.append(
+                {
+                    "tag": "CPS",
+                    "elements": [str(i)],
+                }
+            )
             segments.extend(self._build_line_segments(line, i))
 
         # CNT - Control total
-        segments.append({
-            "tag": "CNT",
-            "elements": [
-                {"components": ["2", str(len(model.despatch_lines))]},
-            ],
-        })
+        segments.append(
+            {
+                "tag": "CNT",
+                "elements": [
+                    {"components": ["2", str(len(model.despatch_lines))]},
+                ],
+            }
+        )
 
         return {"message_type": "DESADV", "segments": segments}
 
-    def _build_party_from_nad(
-        self, nad: "ParsedSegment", group: "SegmentGroupInstance"
-    ) -> Party:
+    def _build_party_from_nad(self, nad: "ParsedSegment", group: "SegmentGroupInstance") -> Party:
         """Build Party from NAD segment and its group."""
         party = Party()
 
@@ -263,9 +253,7 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         party_id_qualifier = get_component_value(nad, 2, 3)
         if party_id:
             party.party_identifications.append(
-                PartyIdentification(
-                    id=Identifier(value=party_id, scheme_id=party_id_qualifier)
-                )
+                PartyIdentification(id=Identifier(value=party_id, scheme_id=party_id_qualifier))
             )
 
         # Party name from NAD C080
@@ -344,9 +332,7 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
                 carrier_id = get_component_value(tdt, 5, 1)
                 if carrier_id:
                     stage.carrier_party = Party(
-                        party_identifications=[
-                            PartyIdentification(id=Identifier(value=carrier_id))
-                        ]
+                        party_identifications=[PartyIdentification(id=Identifier(value=carrier_id))]
                     )
 
                 # Transport means (C228)
@@ -437,9 +423,7 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             item_id_type = get_component_value(lin, 3, 2)
             if item_id:
                 field_type, scheme = map_product_id_qualifier(item_id_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=item_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=item_id, scheme_id=scheme))
                 if field_type == "standard":
                     item.standard_item_identification = ident
                 elif field_type == "sellers":
@@ -453,9 +437,7 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
             pia_type = get_component_value(pia, 2, 2)
             if pia_id:
                 field_type, scheme = map_product_id_qualifier(pia_type or "")
-                ident = ItemIdentification(
-                    id=Identifier(value=pia_id, scheme_id=scheme)
-                )
+                ident = ItemIdentification(id=Identifier(value=pia_id, scheme_id=scheme))
                 if field_type == "standard" and not item.standard_item_identification:
                     item.standard_item_identification = ident
                 elif field_type == "sellers" and not item.sellers_item_identification:
@@ -474,9 +456,7 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
 
         return item
 
-    def _build_nad_segments(
-        self, qualifier: str, party: Party
-    ) -> list[dict]:
+    def _build_nad_segments(self, qualifier: str, party: Party) -> list[dict]:
         """Build NAD segment(s) for a party."""
         segments = []
 
@@ -485,13 +465,15 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         # C082 - Party identification
         if party.party_identifications:
             pi = party.party_identifications[0]
-            elements.append({
-                "components": [
-                    pi.id.value,
-                    "",
-                    pi.id.scheme_id or "92",
-                ],
-            })
+            elements.append(
+                {
+                    "components": [
+                        pi.id.value,
+                        "",
+                        pi.id.scheme_id or "92",
+                    ],
+                }
+            )
         else:
             elements.append("")
 
@@ -567,27 +549,25 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
 
         # C202 - Package type
         if thu.transport_handling_unit_type_code:
-            elements.append({
-                "components": [thu.transport_handling_unit_type_code]
-            })
+            elements.append({"components": [thu.transport_handling_unit_type_code]})
 
         segments.append({"tag": "PAC", "elements": elements})
 
         # PCI for package identification
         if thu.id:
-            segments.append({
-                "tag": "GIN",
-                "elements": [
-                    "BJ",  # Serial shipping container code
-                    {"components": [thu.id]},
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "GIN",
+                    "elements": [
+                        "BJ",  # Serial shipping container code
+                        {"components": [thu.id]},
+                    ],
+                }
+            )
 
         return segments
 
-    def _build_line_segments(
-        self, line: DespatchLine, line_num: int
-    ) -> list[dict]:
+    def _build_line_segments(self, line: DespatchLine, line_num: int) -> list[dict]:
         """Build segment dicts for a line item."""
         segments = []
 
@@ -600,17 +580,21 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
         # C212 - Item number
         if line.item.standard_item_identification:
             si = line.item.standard_item_identification
-            lin_elements.append({
-                "components": [
-                    si.id.value,
-                    "EN" if si.id.scheme_id == "EAN" else "SA",
-                ],
-            })
+            lin_elements.append(
+                {
+                    "components": [
+                        si.id.value,
+                        "EN" if si.id.scheme_id == "EAN" else "SA",
+                    ],
+                }
+            )
         elif line.item.sellers_item_identification:
             si = line.item.sellers_item_identification
-            lin_elements.append({
-                "components": [si.id.value, "SA"],
-            })
+            lin_elements.append(
+                {
+                    "components": [si.id.value, "SA"],
+                }
+            )
         else:
             lin_elements.append("")
 
@@ -618,28 +602,32 @@ class EdifactDespatchAdviceMapper(SemanticMapper[DespatchAdvice]):
 
         # IMD - Item description
         if line.item.description:
-            segments.append({
-                "tag": "IMD",
-                "elements": [
-                    "F",
-                    "",
-                    {"components": ["", "", "", line.item.description]},
-                ],
-            })
+            segments.append(
+                {
+                    "tag": "IMD",
+                    "elements": [
+                        "F",
+                        "",
+                        {"components": ["", "", "", line.item.description]},
+                    ],
+                }
+            )
 
         # QTY - Quantity
-        segments.append({
-            "tag": "QTY",
-            "elements": [
-                {
-                    "components": [
-                        "12",  # Despatch quantity
-                        str(line.delivered_quantity.value),
-                        line.delivered_quantity.unit_code,
-                    ]
-                },
-            ],
-        })
+        segments.append(
+            {
+                "tag": "QTY",
+                "elements": [
+                    {
+                        "components": [
+                            "12",  # Despatch quantity
+                            str(line.delivered_quantity.value),
+                            line.delivered_quantity.unit_code,
+                        ]
+                    },
+                ],
+            }
+        )
 
         return segments
 
