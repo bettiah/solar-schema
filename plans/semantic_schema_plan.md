@@ -1124,14 +1124,19 @@ def x12_amount_to_decimal(value: str, element_id: str) -> Decimal:
 
 Extend to cover more of the 101 UBL types with X12/EDIFACT equivalents:
 
-| Priority | UBL | X12 | EDIFACT |
-|----------|-----|-----|---------|
-| High | OrderResponse | 855 | ORDRSP |
-| High | CreditNote | 812 | CREMUL |
-| High | RemittanceAdvice | 820 | REMADV |
-| Medium | Quotation | 843 | QUOTES |
-| Medium | ReceiptAdvice | 861 | RECADV |
-| Low | Catalogue | 832 | PRICAT |
+| Priority | UBL | X12 | EDIFACT | Status |
+|----------|-----|-----|---------|--------|
+| High | OrderResponse | 855 | ORDRSP | ✅ Complete |
+| High | CreditNote | 812 | CREMUL | ✅ Complete |
+| High | RemittanceAdvice | 820 | REMADV | ✅ Complete |
+| Medium | Quotation | 843 | QUOTES | ✅ Complete |
+| Medium | ReceiptAdvice | 861 | RECADV | ✅ Complete |
+| Low | Catalogue | 832 | PRICAT | Deferred |
+
+**Current Status:** Phase 6 complete (high + medium priority). Catalogue deferred for future work.
+
+**Final Deliverable:** 24 mappers (3 formats × 8 document types) supporting:
+- Order, OrderResponse, Quotation, Invoice, CreditNote, RemittanceAdvice, DespatchAdvice, ReceiptAdvice
 
 ---
 
