@@ -49,6 +49,7 @@ from .monetary import MonetaryTotal
 
 # Document models
 from .order import Order, OrderLine
+from .order_response import OrderResponse, OrderResponseLine
 
 # Party models
 from .party import (
@@ -98,6 +99,7 @@ from .reference import (
     OrderReference,
     ReceiptLineReference,
 )
+from .remittance_advice import RemittanceAdvice, RemittanceAdviceLine
 
 # Tax models
 from .tax import (
@@ -178,10 +180,14 @@ __all__ = [
     # Documents
     "Order",
     "OrderLine",
+    "OrderResponse",
+    "OrderResponseLine",
     "Invoice",
     "InvoiceLine",
     "CreditNote",
     "CreditNoteLine",
+    "RemittanceAdvice",
+    "RemittanceAdviceLine",
     "DespatchAdvice",
     "DespatchLine",
     "ReceiptAdvice",

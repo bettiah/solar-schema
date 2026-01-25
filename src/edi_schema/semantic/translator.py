@@ -21,24 +21,36 @@ from typing import Any, TypeVar
 
 from .mappers.base import Format, SemanticMapper
 from .mappers.edifact import (
+    EdifactCreditNoteMapper,
     EdifactDespatchAdviceMapper,
     EdifactInvoiceMapper,
     EdifactOrderMapper,
+    EdifactOrderResponseMapper,
+    EdifactRemittanceAdviceMapper,
 )
 from .mappers.ubl import (
+    UBLCreditNoteMapper,
     UBLDespatchAdviceMapper,
     UBLInvoiceMapper,
     UBLOrderMapper,
+    UBLOrderResponseMapper,
+    UBLRemittanceAdviceMapper,
 )
 from .mappers.x12 import (
+    X12CreditNoteMapper,
     X12DespatchAdviceMapper,
     X12InvoiceMapper,
     X12OrderMapper,
+    X12OrderResponseMapper,
+    X12RemittanceAdviceMapper,
 )
 from .models import (
+    CreditNote,
     DespatchAdvice,
     Invoice,
     Order,
+    OrderResponse,
+    RemittanceAdvice,
     SemanticModel,
 )
 
@@ -47,7 +59,10 @@ class DocumentType(Enum):
     """Supported document types for translation."""
 
     ORDER = "order"
+    ORDER_RESPONSE = "order_response"
     INVOICE = "invoice"
+    CREDIT_NOTE = "credit_note"
+    REMITTANCE_ADVICE = "remittance_advice"
     DESPATCH_ADVICE = "despatch_advice"
 
 
@@ -81,22 +96,34 @@ class TranslationService:
         self._mappers: dict[tuple[Format, DocumentType], SemanticMapper] = {
             # X12 mappers
             (Format.X12, DocumentType.ORDER): X12OrderMapper(),
+            (Format.X12, DocumentType.ORDER_RESPONSE): X12OrderResponseMapper(),
             (Format.X12, DocumentType.INVOICE): X12InvoiceMapper(),
+            (Format.X12, DocumentType.CREDIT_NOTE): X12CreditNoteMapper(),
+            (Format.X12, DocumentType.REMITTANCE_ADVICE): X12RemittanceAdviceMapper(),
             (Format.X12, DocumentType.DESPATCH_ADVICE): X12DespatchAdviceMapper(),
             # UBL mappers
             (Format.UBL, DocumentType.ORDER): UBLOrderMapper(),
+            (Format.UBL, DocumentType.ORDER_RESPONSE): UBLOrderResponseMapper(),
             (Format.UBL, DocumentType.INVOICE): UBLInvoiceMapper(),
+            (Format.UBL, DocumentType.CREDIT_NOTE): UBLCreditNoteMapper(),
+            (Format.UBL, DocumentType.REMITTANCE_ADVICE): UBLRemittanceAdviceMapper(),
             (Format.UBL, DocumentType.DESPATCH_ADVICE): UBLDespatchAdviceMapper(),
             # EDIFACT mappers
             (Format.EDIFACT, DocumentType.ORDER): EdifactOrderMapper(),
+            (Format.EDIFACT, DocumentType.ORDER_RESPONSE): EdifactOrderResponseMapper(),
             (Format.EDIFACT, DocumentType.INVOICE): EdifactInvoiceMapper(),
+            (Format.EDIFACT, DocumentType.CREDIT_NOTE): EdifactCreditNoteMapper(),
+            (Format.EDIFACT, DocumentType.REMITTANCE_ADVICE): EdifactRemittanceAdviceMapper(),
             (Format.EDIFACT, DocumentType.DESPATCH_ADVICE): EdifactDespatchAdviceMapper(),
         }
 
         # Map model types to document types
         self._model_to_doc_type: dict[type, DocumentType] = {
             Order: DocumentType.ORDER,
+            OrderResponse: DocumentType.ORDER_RESPONSE,
             Invoice: DocumentType.INVOICE,
+            CreditNote: DocumentType.CREDIT_NOTE,
+            RemittanceAdvice: DocumentType.REMITTANCE_ADVICE,
             DespatchAdvice: DocumentType.DESPATCH_ADVICE,
         }
 
