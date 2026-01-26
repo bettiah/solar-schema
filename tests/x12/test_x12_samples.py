@@ -29,17 +29,29 @@ from edi_schema.x12.validator import (
 
 # Path to X12 sample files
 X12_SAMPLES_DIR = Path(__file__).parent.parent / "fixtures" / "x12_samples"
+HIPAA_SAMPLES_DIR = X12_SAMPLES_DIR / "hipaa"
+LOGISTICS_SAMPLES_DIR = X12_SAMPLES_DIR / "logistics"
 
 
-def get_sample_files() -> list[Path]:
-    """Get all X12 sample files."""
-    if not X12_SAMPLES_DIR.exists():
+def get_sample_files(directory: Path) -> list[Path]:
+    """Get all X12 sample files from a directory."""
+    if not directory.exists():
         return []
-    return sorted(X12_SAMPLES_DIR.glob("*.x12"))
+    return sorted(directory.glob("*.x12"))
+
+
+def get_all_sample_files() -> list[Path]:
+    """Get all X12 sample files from all subdirectories."""
+    files = []
+    files.extend(get_sample_files(HIPAA_SAMPLES_DIR))
+    files.extend(get_sample_files(LOGISTICS_SAMPLES_DIR))
+    return files
 
 
 # Get list of sample files for parametrization
-SAMPLE_FILES = get_sample_files()
+HIPAA_SAMPLE_FILES = get_sample_files(HIPAA_SAMPLES_DIR)
+LOGISTICS_SAMPLE_FILES = get_sample_files(LOGISTICS_SAMPLES_DIR)
+SAMPLE_FILES = get_all_sample_files()
 
 
 @pytest.fixture
@@ -48,7 +60,7 @@ def schema_loader() -> GeneratedX12SchemaLoader:
     return GeneratedX12SchemaLoader(version="005010")
 
 
-def interchange_to_dict(interchange) -> dict:
+def interchange_to_dict(interchange) -> dict | None:
     """Convert an InterchangeInstance to a dictionary for snapshot comparison."""
     if interchange is None:
         return None
@@ -190,6 +202,7 @@ class TestTransactionTypeDetection:
 
     # Expected transaction types and functional IDs for each file
     EXPECTED_TYPES = {
+        # HIPAA transactions
         "270_eligibility_inquiry": {"txn_id": "270", "func_id": "HS"},
         "271_eligibility_response": {"txn_id": "271", "func_id": "HB"},
         "276_claim_status_request": {"txn_id": "276", "func_id": "HR"},
@@ -200,6 +213,21 @@ class TestTransactionTypeDetection:
         "835_remittance": {"txn_id": "835", "func_id": "HP"},
         "837P_professional_claim": {"txn_id": "837", "func_id": "HC"},
         "837I_institutional_claim": {"txn_id": "837", "func_id": "HC"},
+        # Logistics transactions
+        "204_motor_carrier_load_tender": {"txn_id": "204", "func_id": "SM"},
+        "210_freight_details_invoice": {"txn_id": "210", "func_id": "IM"},
+        "211_motor_carrier_bill_of_lading": {"txn_id": "211", "func_id": "BL"},
+        "214_shipment_status": {"txn_id": "214", "func_id": "QM"},
+        "810_invoice": {"txn_id": "810", "func_id": "IN"},
+        "820_remittance_advice": {"txn_id": "820", "func_id": "RA"},
+        "846_inventory_inquiry": {"txn_id": "846", "func_id": "IB"},
+        "850_purchase_order": {"txn_id": "850", "func_id": "PO"},
+        "855_purchase_order_ack": {"txn_id": "855", "func_id": "PR"},
+        "856_ship_notice": {"txn_id": "856", "func_id": "IN"},
+        "940_warehouse_shipping_order": {"txn_id": "940", "func_id": "OW"},
+        "945_warehouse_shipping_advice": {"txn_id": "945", "func_id": "SW"},
+        "947_warehouse_inventory_adjustment": {"txn_id": "947", "func_id": "AW"},
+        "997_functional_ack": {"txn_id": "997", "func_id": "FA"},
     }
 
     @pytest.mark.parametrize(
@@ -376,7 +404,7 @@ class TestSpecificSamples:
         snapshot,
     ):
         """Test parsing 837P Professional Claim sample."""
-        x12_file = X12_SAMPLES_DIR / "837P_professional_claim.x12"
+        x12_file = HIPAA_SAMPLES_DIR / "837P_professional_claim.x12"
         if not x12_file.exists():
             pytest.skip(f"File not found: {x12_file}")
 
@@ -408,7 +436,7 @@ class TestSpecificSamples:
         snapshot,
     ):
         """Test parsing 835 Remittance Advice sample."""
-        x12_file = X12_SAMPLES_DIR / "835_remittance.x12"
+        x12_file = HIPAA_SAMPLES_DIR / "835_remittance.x12"
         if not x12_file.exists():
             pytest.skip(f"File not found: {x12_file}")
 
@@ -432,7 +460,7 @@ class TestSpecificSamples:
         snapshot,
     ):
         """Test parsing 270 Eligibility Inquiry sample."""
-        x12_file = X12_SAMPLES_DIR / "270_eligibility_inquiry.x12"
+        x12_file = HIPAA_SAMPLES_DIR / "270_eligibility_inquiry.x12"
         if not x12_file.exists():
             pytest.skip(f"File not found: {x12_file}")
 
