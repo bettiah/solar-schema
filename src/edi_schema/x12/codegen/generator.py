@@ -142,21 +142,54 @@ class SchemaGenerator:
         print(f"  Generated {len(segments)} segments")
 
     def _generate_transaction_sets(self) -> None:
-        """Generate transaction_sets.py."""
+        """Generate transaction_sets/ package with individual files per transaction."""
+        # Create transaction_sets subdirectory
+        txn_dir = self.config.output_path / "transaction_sets"
+        txn_dir.mkdir(parents=True, exist_ok=True)
+
         transaction_ids = self.loader.list_schemas()
-        transactions = []
+        transactions_meta = []
+
+        # Generate individual transaction set files
+        txn_template = self._env.get_template("transaction_set.py.j2")
+
         for txn_id in sorted(transaction_ids):
             schema = self.loader.load(txn_id)
-            transactions.append(schema.transaction_set)
+            txn = schema.transaction_set
 
-        template = self._env.get_template("transaction_sets.py.j2")
-        content = template.render(
+            # Generate module name: ts_{id}_{snake_case_name}
+            # Prefix with "ts_" since Python module names can't start with digits
+            module_name = f"ts_{txn.id}_{self._to_snake_case(txn.name)}"
+
+            content = txn_template.render(
+                txn=txn,
+                include_freeform=self.config.include_freeform,
+            )
+
+            file_path = txn_dir / f"{module_name}.py"
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            transactions_meta.append(
+                {
+                    "id": txn.id,
+                    "name": txn.name,
+                    "module_name": module_name,
+                }
+            )
+
+        # Generate __init__.py for the transaction_sets package
+        init_template = self._env.get_template("transaction_sets_init.py.j2")
+        init_content = init_template.render(
             version=self.config.version,
-            transactions=transactions,
-            include_freeform=self.config.include_freeform,
+            transactions=transactions_meta,
         )
-        self._write_file("transaction_sets.py", content)
-        print(f"  Generated {len(transactions)} transaction sets")
+
+        init_path = txn_dir / "__init__.py"
+        with open(init_path, "w", encoding="utf-8") as f:
+            f.write(init_content)
+
+        print(f"  Generated {len(transactions_meta)} transaction sets in transaction_sets/")
 
     def _generate_lookups(self) -> None:
         """Generate lookups.py with fast lookup tables."""
@@ -187,6 +220,29 @@ class SchemaGenerator:
     def _safe_id(id_str: str) -> str:
         """Convert an ID to a valid Python identifier."""
         return id_str.replace("-", "_").replace(" ", "_").replace(".", "_")
+
+    @staticmethod
+    def _to_snake_case(name: str) -> str:
+        """Convert a transaction name to snake_case for module naming.
+
+        Examples:
+            "Purchase Order" -> "purchase_order"
+            "Ship Notice/Manifest" -> "ship_notice_manifest"
+            "Motor Carrier Load Tender" -> "motor_carrier_load_tender"
+        """
+        import re
+
+        # Replace special characters with underscores
+        result = re.sub(r"[/\-\(\)\,\.]", "_", name)
+        # Replace spaces with underscores
+        result = result.replace(" ", "_")
+        # Convert to lowercase
+        result = result.lower()
+        # Remove consecutive underscores
+        result = re.sub(r"_+", "_", result)
+        # Remove leading/trailing underscores
+        result = result.strip("_")
+        return result
 
 
 def main():
