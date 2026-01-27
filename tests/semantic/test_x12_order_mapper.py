@@ -210,6 +210,8 @@ class TestUnmappedTracking:
 
     def test_unmapped_tracking_enabled(self, parsed_850_transaction):
         """Test that unmapped tracking collects unmapped qualifiers."""
+        from edi_schema.semantic.mapping.errors import MappingErrorCode
+
         engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
         result = engine.to_semantic(parsed_850_transaction)
 
@@ -219,10 +221,29 @@ class TestUnmappedTracking:
         # Should have metrics with unmapped tracking
         assert result.metrics is not None
 
-        # Check for unmapped qualifiers or segments in warnings
-        warnings = [e for e in result.errors if e.severity.value == "warning"]
+        # There should be warnings for both:
+        # 1. UNMAPPED_ELEMENT - elements that have values but no mapping
+        # 2. CANNOT_SET_FIELD - mappings that failed because path doesn't exist
+        warnings_by_code = {}
+        for w in result.warnings:
+            warnings_by_code.setdefault(w.code, []).append(w.source_path)
+
+        # UNMAPPED_ELEMENT warnings for elements without mappings
+        unmapped = warnings_by_code.get(MappingErrorCode.UNMAPPED_ELEMENT, [])
+        assert 'CUR*01' in unmapped  # Currency entity identifier
+        assert 'REF*03' in unmapped  # Reference description
+        assert 'PO1*06' in unmapped  # Product ID qualifier
+        assert 'PO1*07' in unmapped  # Product ID value
+        assert 'CTT*02' in unmapped  # Hash total
+
+        # CANNOT_SET_FIELD warnings for failed mappings (path doesn't exist on model)
+        cannot_set = warnings_by_code.get(MappingErrorCode.CANNOT_SET_FIELD, [])
+        # TD5 mappings fail because delivery[0].shipment is None
+        assert any('TD5' in p for p in cannot_set), f"Expected TD5 warning, got {cannot_set}"
+        # MSG mapping fails because note list is empty
+        assert any('MSG' in p for p in cannot_set), f"Expected MSG warning, got {cannot_set}"
+
         # The sample file should have some unmapped data
-        # (exact count depends on file content)
         assert result.metrics.total_segments_in_document > 0
 
     def test_unmapped_warnings_can_be_disabled(self, parsed_850_transaction):

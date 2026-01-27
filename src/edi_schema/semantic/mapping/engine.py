@@ -1169,6 +1169,15 @@ class MappingEngine:
             else:
                 if metrics:
                     metrics.fields_skipped += 1
+                # Generate warning for failed mapping when we had a value
+                if self.warn_on_unmapped and value is not None:
+                    accumulator.add_warning(
+                        MappingErrorCode.CANNOT_SET_FIELD,
+                        f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
+                        source_path=str(path),
+                        target_path=field_mapping.semantic.path,
+                        value=value,
+                    )
 
     def _map_envelope_fields(
         self,
@@ -1406,6 +1415,16 @@ class MappingEngine:
                 else:
                     if metrics:
                         metrics.fields_skipped += 1
+                    # Generate warning for failed qualified mapping
+                    if self.warn_on_unmapped and value is not None:
+                        source = f"{path.segment}[{qualifier_value}]*{path.element}"
+                        accumulator.add_warning(
+                            MappingErrorCode.CANNOT_SET_FIELD,
+                            f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
+                            source_path=source,
+                            target_path=field_mapping.semantic.path,
+                            value=value,
+                        )
 
     def _map_party_loops(
         self,
@@ -2075,6 +2094,15 @@ class MappingEngine:
             else:
                 if metrics:
                     metrics.fields_skipped += 1
+                # Generate warning for failed loop item mapping
+                if self.warn_on_unmapped and value is not None:
+                    accumulator.add_warning(
+                        MappingErrorCode.CANNOT_SET_FIELD,
+                        f"Failed to set {semantic_path}: path does not exist on model",
+                        source_path=str(path),
+                        target_path=semantic_path,
+                        value=value,
+                    )
 
         # Map qualified segments within loop
         for qualified_mapping in loop_mapping.qualified_mappings:
