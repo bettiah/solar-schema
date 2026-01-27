@@ -154,6 +154,7 @@ class MappingResult:
 
 ## Implementation Tasks
 
+### Phase 1: Unmapped Tracking (COMPLETE)
 - [x] Add `UnmappedData` dataclass to diagnostics.py
 - [x] Add unmapped tracking fields to `MappingMetrics`
 - [x] Add `MappingErrorCode.UNMAPPED_QUALIFIER`, `UNMAPPED_SEGMENT`, `UNMAPPED_ELEMENT`
@@ -165,18 +166,34 @@ class MappingResult:
 - [x] Add header-level segment tracking (PER, etc.)
 - [x] Add unmapped element tracking within segments
 - [x] Add tests for unmapped tracking
-- [ ] Add `get_unmapped_report()` to MappingResult (optional)
-- [ ] Add `strict_mode` option (optional)
-- [ ] Update documentation (optional)
+
+### Phase 2: Special Segment Handlers (COMPLETE)
+- [x] Add `_map_header_per_segments()` for header-level PER*OC, PER*IC contacts
+- [x] Add `_map_fob_to_delivery()` for FOB*02, FOB*03, FOB*05 delivery terms
+- [x] Add `_map_td5_to_shipment()` for TD5 carrier/shipping info (creates Shipment object)
+- [x] Add `_map_msg_notes()` for MSG segments (recursively finds MSG in N9 loops too)
+
+### Phase 3: Failed Mapping Warnings (COMPLETE)
+- [x] Add `CANNOT_SET_FIELD` warnings when `set_nested_attr` fails but value exists
+- [x] Update `_map_optional_field_mappings`, `_map_qualified_segments`, `_map_loop_item_optional_fields`
+
+### Future Work (Optional)
+- [ ] Add `get_unmapped_report()` to MappingResult
+- [ ] Add `strict_mode` option
+- [ ] Add handlers for AMT and DTM to create intermediate objects
+- [ ] Update documentation
 
 ---
 
 ## Success Criteria
 
-1. ✅ Running the mapper on `850_purchase_order.x12` reports:
-   - ✅ `REF*8M` as unmapped qualifier
-   - ✅ Header-level `PER*OC` as unmapped segment
-   - ✅ `FOB*02` and `FOB*03` as unmapped elements
+1. ✅ Running the mapper on `850_purchase_order.x12` now:
+   - ✅ Successfully maps header-level `PER*OC` to `buyer_customer_party.buyer_contact`
+   - ✅ Successfully maps `FOB*02`, `FOB*03` to `delivery[0].delivery_terms`
+   - ✅ Successfully maps `TD5` to `delivery[0].shipment` (carrier, mode, service level)
+   - ✅ Successfully maps `MSG` to `note[]` list (including MSG inside N9 loops)
+   - ✅ Generates warnings for unmapped elements (CUR*01, REF*03, PO1*06/07, CTT*02, AMT*01)
+   - ✅ Generates `CANNOT_SET_FIELD` warnings for failed mappings (AMT*TT, DTM*010, PO1*05)
 
 2. ✅ Metrics show:
    - ✅ Total segments in document
@@ -186,26 +203,27 @@ class MappingResult:
 
 3. [ ] Optional strict mode should fail the mapping if any data is unmapped (not yet implemented)
 
-## Verification Output
+## Current Verification Output
 
 ```
-=== Unmapped Summary ===
-Total unmapped: 10
-By segment: {'REF': 2, 'PER': 1, 'CUR': 1, 'FOB': 2, 'PO1': 2, 'CTT': 1, 'AMT': 1}
-By reason: {'unknown_qualifier': 1, 'header_level': 1, 'unmapped_element': 8}
-Unmapped qualifiers: {'REF': ['8M']}
+=== Order note list ===
+note: ['If items are available for partial shipment, please contact companyA@trading.com for authorization prior to release']
 
-=== Warnings ===
-  UNMAPPED_QUALIFIER: No mapping for REF*8M
-  UNMAPPED_SEGMENT: Header-level PER segment not mapped (only handled within N1 loops)
-  UNMAPPED_ELEMENT: Element CUR*01 has value but no mapping: 'SN'
-  UNMAPPED_ELEMENT: Element REF*03 has value but no mapping: 'ORIGIN'
-  UNMAPPED_ELEMENT: Element FOB*02 has value but no mapping: 'ZZ'
-  UNMAPPED_ELEMENT: Element FOB*03 has value but no mapping: 'UPS Ground #442E1W'
-  UNMAPPED_ELEMENT: Element PO1*06 has value but no mapping: 'VP'
-  UNMAPPED_ELEMENT: Element PO1*07 has value but no mapping: '32230538'
-  UNMAPPED_ELEMENT: Element CTT*02 has value but no mapping: '1'
-  UNMAPPED_ELEMENT: Element AMT*01 has value but no mapping: 'TT'
+=== Shipment data ===
+carrier_party: Party with UPSN identification
+shipment_stages: [ShipmentStage(transit_direction_code='UPS Ground #442E2E')]
+shipping_priority_level_code: SG
+
+=== Remaining warnings ===
+  CANNOT_SET_FIELD: AMT*02 [*1=TT] -> anticipated_monetary_total.payable_amount.value
+  CANNOT_SET_FIELD: DTM[010]*2 -> delivery[0].despatch.requested_despatch_date
+  CANNOT_SET_FIELD: PO1*05 -> price.base_quantity_unit_code
+  UNMAPPED_ELEMENT: CUR*01 -> None
+  UNMAPPED_ELEMENT: REF*03 -> None
+  UNMAPPED_ELEMENT: PO1*06 -> None
+  UNMAPPED_ELEMENT: PO1*07 -> None
+  UNMAPPED_ELEMENT: CTT*02 -> None
+  UNMAPPED_ELEMENT: AMT*01 -> None
 ```
 
 ---
