@@ -60,10 +60,12 @@ class LoopNode:
 
     # For runtime tracking during parsing
     _segment_set: set[str] = field(default_factory=set, repr=False)
+    _segment_index_map: dict[str, int] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
-        """Build segment set for quick lookup."""
+        """Build segment set and index map for quick lookup."""
         self._segment_set = {s.segment_id for s in self.segments}
+        self._segment_index_map = {s.segment_id: i for i, s in enumerate(self.segments)}
 
     def __str__(self) -> str:
         repeat_str = "unlimited" if self.max_repeat in (-1, ">1") else str(self.max_repeat)
@@ -85,6 +87,10 @@ class LoopNode:
     def contains_segment(self, segment_id: str) -> bool:
         """Check if this loop (not children) contains the segment."""
         return segment_id in self._segment_set
+
+    def get_segment_index(self, segment_id: str) -> int | None:
+        """Get the index of a segment in this loop, or None if not found."""
+        return self._segment_index_map.get(segment_id)
 
     def get_first_segment_id(self) -> str | None:
         """Get the ID of the first segment (loop trigger)."""
@@ -275,8 +281,9 @@ class LoopHierarchyBuilder:
         return root
 
     def _rebuild_segment_sets(self, node: LoopNode) -> None:
-        """Recursively rebuild segment sets after tree construction."""
+        """Recursively rebuild segment sets and index maps after tree construction."""
         node._segment_set = {s.segment_id for s in node.segments}
+        node._segment_index_map = {s.segment_id: i for i, s in enumerate(node.segments)}
         for child in node.children:
             self._rebuild_segment_sets(child)
 
@@ -375,6 +382,21 @@ class LoopMatcher:
         """Reset matcher to start of document."""
         self.position = LoopPosition(current_loop=self.root)
 
+    def skip_envelope_segments(self) -> None:
+        """
+        Skip past ST segment in the ROOT loop.
+
+        Transaction content is parsed without ST/SE envelope segments
+        (they're already handled by the document parser), but the schema
+        includes them in ROOT. This method advances past ST so the first
+        content segment (typically BEG, BGN, etc.) is expected.
+        """
+        if self.position.current_loop.loop_id == "ROOT":
+            # Check if first segment is ST and skip it
+            segs = self.position.current_loop.segments
+            if segs and segs[0].segment_id == "ST":
+                self.position.segment_index = 1
+
     def match_segment(self, segment_id: str) -> "MatchResult":
         """
         Attempt to match a segment ID against expected structure.
@@ -401,13 +423,37 @@ class LoopMatcher:
                 loop=current,
             )
 
-        # Strategy 3: Out of order within current loop
-        if current.contains_segment(segment_id):
-            return MatchResult(
-                action=MatchAction.ACCEPT_OUT_OF_ORDER,
-                loop=current,
-                message=f"Segment {segment_id} out of order in loop {current.loop_id}",
-            )
+        # Strategy 3: Segment in current loop but not at expected position
+        seg_index = current.get_segment_index(segment_id)
+        if seg_index is not None:
+            current_index = self.position.segment_index
+            if seg_index >= current_index:
+                # Segment is ahead - just skipping optional segments, this is fine
+                return MatchResult(
+                    action=MatchAction.ACCEPT_SKIP,
+                    loop=current,
+                    advance_segment=True,
+                    segment_schema_index=seg_index,
+                )
+            else:
+                # Segment is behind current position - check if it can repeat
+                seg_def = current.segments[seg_index]
+                max_use = getattr(seg_def, "get_max_use_int", lambda: 1)()
+                if max_use > 1 or max_use == -1:
+                    # Segment can repeat - this is a valid repetition, not out of order
+                    # Stay at current position (don't advance segment_index)
+                    return MatchResult(
+                        action=MatchAction.ACCEPT,
+                        loop=current,
+                        advance_segment=False,  # Don't move forward
+                    )
+                else:
+                    # Segment cannot repeat - true out of order (backtracking)
+                    return MatchResult(
+                        action=MatchAction.ACCEPT_OUT_OF_ORDER,
+                        loop=current,
+                        message=f"Segment {segment_id} out of order in loop {current.loop_id}",
+                    )
 
         # Strategy 4: Start of a child loop
         child_loop = current.find_child_by_first_segment(segment_id)
@@ -418,7 +464,7 @@ class LoopMatcher:
             )
 
         # Strategy 5: Segment belongs to a parent loop (current ended early)
-        parent_loop, levels, child_loop = self._find_parent_containing(segment_id)
+        parent_loop, levels, child_loop, is_new_iteration = self._find_parent_containing(segment_id)
         if parent_loop:
             if child_loop:
                 # Segment starts a child loop of a parent - enter that loop
@@ -427,6 +473,14 @@ class LoopMatcher:
                     loop=child_loop,
                     levels_popped=levels,
                     message=f"Loop {current.loop_id} ended, entering sibling {child_loop.loop_id}",
+                )
+            if is_new_iteration:
+                # Segment starts a new iteration of a parent loop
+                return MatchResult(
+                    action=MatchAction.NEW_ITERATION_PARENT,
+                    loop=parent_loop,
+                    levels_popped=levels,
+                    message=f"Loop {current.loop_id} ended, starting new iteration of {parent_loop.loop_id}",
                 )
             return MatchResult(
                 action=MatchAction.POP_TO_PARENT,
@@ -464,13 +518,14 @@ class LoopMatcher:
 
     def _find_parent_containing(
         self, segment_id: str
-    ) -> tuple[LoopNode | None, int, LoopNode | None]:
+    ) -> tuple[LoopNode | None, int, LoopNode | None, bool]:
         """
         Find a parent loop that contains this segment.
 
-        Returns (parent_loop, levels_popped, child_loop) or (None, 0, None) if not found.
+        Returns (parent_loop, levels_popped, child_loop, is_new_iteration) or (None, 0, None, False) if not found.
 
         If child_loop is not None, the segment starts a child loop of parent_loop.
+        If is_new_iteration is True, the segment starts a new iteration of parent_loop.
         """
         levels = 0
         pos = self.position.parent_position
@@ -479,27 +534,36 @@ class LoopMatcher:
             levels += 1
             loop = pos.current_loop
 
-            # Check if segment is in this loop
+            # Check first segment for new iteration FIRST
+            # (must come before contains_segment because the first segment is also in the loop)
+            if loop.get_first_segment_id() == segment_id:
+                return loop, levels, None, True
+
+            # Check if segment is in this loop (but not at start position)
             if loop.contains_segment(segment_id):
-                return loop, levels, None
+                return loop, levels, None, False
 
             # Check if segment starts a child of this loop
             child = loop.find_child_by_first_segment(segment_id)
             if child:
-                return loop, levels, child
-
-            # Check first segment for new iteration
-            if loop.get_first_segment_id() == segment_id:
-                return loop, levels, None
+                return loop, levels, child, False
 
             pos = pos.parent_position
 
-        return None, 0, None
+        return None, 0, None, False
 
     def advance_to(self, result: "MatchResult") -> None:
         """Update position based on match result."""
         if result.action == MatchAction.ACCEPT:
-            self.position.segment_index += 1
+            if result.advance_segment:
+                self.position.segment_index += 1
+
+        elif result.action == MatchAction.ACCEPT_SKIP:
+            # Advance to position after the matched segment
+            if result.segment_schema_index is not None:
+                self.position.segment_index = result.segment_schema_index + 1
+            else:
+                self.position.segment_index += 1
 
         elif result.action == MatchAction.ACCEPT_OUT_OF_ORDER:
             # Don't advance index, segment was out of order
@@ -520,7 +584,7 @@ class LoopMatcher:
             self.position.iteration += 1
             self.position.segment_index = 1  # Already matched first segment
 
-        elif result.action in (MatchAction.POP_TO_PARENT, MatchAction.ENTER_SIBLING_LOOP):
+        elif result.action in (MatchAction.POP_TO_PARENT, MatchAction.ENTER_SIBLING_LOOP, MatchAction.NEW_ITERATION_PARENT):
             # Pop back up to parent
             for _ in range(result.levels_popped):
                 if self.position.parent_position:
@@ -535,16 +599,22 @@ class LoopMatcher:
                     parent_position=self.position,
                 )
                 self.position = new_pos
+            elif result.action == MatchAction.NEW_ITERATION_PARENT:
+                # Start new iteration of the parent loop
+                self.position.iteration += 1
+                self.position.segment_index = 1  # Already matched first segment
 
 
 class MatchAction:
     """Actions the parser can take based on segment matching."""
 
     ACCEPT = "accept"  # Segment matches expected position
+    ACCEPT_SKIP = "accept_skip"  # Segment matches but skips optional segments
     ACCEPT_OUT_OF_ORDER = "accept_out_of_order"  # In current loop but wrong order
     ENTER_CHILD_LOOP = "enter_child_loop"  # Start a nested child loop
     ENTER_SIBLING_LOOP = "enter_sibling_loop"  # Pop and start sibling loop
     NEW_ITERATION = "new_iteration"  # Start another iteration of current loop
+    NEW_ITERATION_PARENT = "new_iteration_parent"  # Pop and start new iteration of parent
     POP_TO_PARENT = "pop_to_parent"  # Return to parent loop
     UNKNOWN_SEGMENT = "unknown_segment"  # Doesn't match anything
 
@@ -559,3 +629,4 @@ class MatchResult:
     levels_popped: int = 0
     message: str | None = None
     expected: list[str] | None = None
+    segment_schema_index: int | None = None  # For ACCEPT_SKIP: index to advance to

@@ -427,6 +427,8 @@ class TransactionParser:
             return self._parse_without_schema(segments)
 
         self.matcher.reset()
+        # Skip past ST segment - transaction content excludes ST/SE envelope
+        self.matcher.skip_envelope_segments()
         result: list[ParsedSegment | LoopInstance] = []
 
         # Track current loop for building LoopInstances
@@ -440,8 +442,8 @@ class TransactionParser:
             match_result = self.matcher.match_segment(segment.tag)
 
             # Handle match result
-            if match_result.action == MatchAction.ACCEPT:
-                # Normal case - segment matches expected position
+            if match_result.action in (MatchAction.ACCEPT, MatchAction.ACCEPT_SKIP):
+                # Normal case - segment matches expected position (or skips optional segments)
                 parsed = self._to_parsed_segment(segment)
                 self._add_to_current_loop(parsed, loop_stack, root_content)
                 self.matcher.advance_to(match_result)
@@ -578,6 +580,38 @@ class TransactionParser:
 
                 parsed = self._to_parsed_segment(segment)
                 self._add_to_current_loop(parsed, loop_stack, root_content)
+
+                self.matcher.advance_to(match_result)
+
+            elif match_result.action == MatchAction.NEW_ITERATION_PARENT:
+                # Pop back to parent and start new iteration
+                for _ in range(match_result.levels_popped):
+                    if loop_stack:
+                        loop_stack.pop()
+
+                # Now start a new iteration of the parent loop
+                loop_node = match_result.loop
+                iteration = self._get_next_iteration(loop_node.loop_id)
+
+                loop_instance = LoopInstance(
+                    loop_id=loop_node.loop_id,
+                    definition=None,
+                    segments=[],
+                    children=[],
+                    iteration=iteration,
+                    errors=[],
+                )
+
+                # Add to parent of this loop
+                if loop_stack:
+                    loop_stack[-1][1].children.append(loop_instance)
+                else:
+                    root_content.append(loop_instance)
+
+                loop_stack.append((loop_node, loop_instance))
+
+                parsed = self._to_parsed_segment(segment)
+                loop_instance.segments.append(parsed)
 
                 self.matcher.advance_to(match_result)
 
