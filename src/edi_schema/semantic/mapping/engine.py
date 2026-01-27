@@ -244,6 +244,8 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
                 if isinstance(current, list) and 0 <= index < len(current):
                     current = current[index]
                 else:
+                    # List index out of bounds - don't create new items
+                    # This allows other phases to create the list items first
                     return False
             except ValueError:
                 return False
@@ -368,6 +370,71 @@ def _parse_path_parts(path: str) -> list[str]:
         parts.append(current)
 
     return parts
+
+
+def _create_list_item_from_parent(root_obj: Any, path_parts: list[str], index: int) -> Any:
+    """Create a list item based on the parent object's type hints.
+
+    For paths like "delivery[0]", this navigates to "delivery" on root_obj,
+    determines the list element type, and creates a new instance.
+    """
+    if not path_parts:
+        return None
+
+    # Navigate to the list attribute
+    current = root_obj
+    for part in path_parts:
+        if part.startswith("[") and part.endswith("]"):
+            # Skip index parts - we're looking for the list attribute
+            continue
+        if hasattr(current, part):
+            current = getattr(current, part)
+            if current is None:
+                return None
+        else:
+            return None
+
+    # At this point, 'current' should be the list
+    # We need to get the parent object and the list attribute name to find the type
+    parent = root_obj
+    list_attr_name = path_parts[-1] if path_parts else None
+
+    # Navigate to the parent of the list
+    for i, part in enumerate(path_parts[:-1]):
+        if part.startswith("[") and part.endswith("]"):
+            idx = int(part[1:-1])
+            if isinstance(parent, list) and 0 <= idx < len(parent):
+                parent = parent[idx]
+            else:
+                return None
+        elif hasattr(parent, part):
+            parent = getattr(parent, part)
+            if parent is None:
+                return None
+
+    # Now try to get the list element type from parent's type hints
+    try:
+        parent_class = type(parent)
+        if hasattr(parent_class, "model_fields") and list_attr_name:
+            field_info = parent_class.model_fields.get(list_attr_name)
+            if field_info and field_info.annotation:
+                annotation = field_info.annotation
+                # Handle list[T] annotation
+                origin = getattr(annotation, "__origin__", None)
+                if origin is list:
+                    args = getattr(annotation, "__args__", ())
+                    if args:
+                        element_type = args[0]
+                        # Handle Optional or Union types in element
+                        if getattr(element_type, "__origin__", None) is type(None):
+                            return None
+                        # Try to instantiate the element type
+                        if hasattr(element_type, "__call__"):
+                            return element_type()
+    except Exception:
+        pass
+
+    return None
 
 
 def _create_intermediate(obj: Any, attr_name: str) -> bool:
@@ -546,6 +613,14 @@ class MappingEngine:
                     if seg not in elements:
                         elements[seg] = set()
                     elements[seg].add(fm.x12.element)
+
+        # Special handling: FOB*02, FOB*03, FOB*05 are handled by _map_fob_to_delivery
+        # for transactions 850, 810, 856
+        if self.mapping.transaction_id in ("850", "810", "856"):
+            if "FOB" not in elements:
+                elements["FOB"] = set()
+            elements["FOB"].update({2, 3, 5})
+
         return elements
 
     def _collect_segment_tags(
@@ -847,6 +922,10 @@ class MappingEngine:
             # Phase 6.5: Map header-level PER segments (outside N1 loops)
             if self.mapping.transaction_id in ("850", "810", "856"):
                 self._map_header_per_segments(model, content, metrics, trace)
+
+            # Phase 6.6: Map FOB delivery terms to delivery (now that delivery exists)
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_fob_to_delivery(model, content, metrics, trace)
 
             # Phase 7: Map item loops (PO1, IT1, etc.)
             loop_start = time.perf_counter()
@@ -2448,6 +2527,62 @@ class MappingEngine:
                                 "buyer_customer_party.party.contact",
                                 contact.name,
                             )
+
+    def _map_fob_to_delivery(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map FOB segment delivery terms to the first delivery.
+
+        This runs after party loops so that delivery[0] exists.
+        Maps FOB*02 (location qualifier) and FOB*03 (description) to delivery_terms.
+        """
+        from edi_schema.semantic.models import DeliveryTerms
+
+        # Only proceed if there's at least one delivery
+        if not hasattr(model, "delivery") or not model.delivery:
+            return
+
+        delivery = model.delivery[0]
+
+        # Find FOB segment
+        fob_seg = find_segment(content, "FOB")
+        if not fob_seg:
+            return
+
+        # Ensure delivery_terms exists
+        if delivery.delivery_terms is None:
+            delivery.delivery_terms = DeliveryTerms()
+
+        # FOB*02 = Location Qualifier (ZZ=Mutually Defined, etc.)
+        location_qual = _get_element_value(fob_seg, 2)
+        if location_qual:
+            delivery.delivery_terms.loss_risk_responsibility_code = location_qual
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("FOB*02", "delivery[0].delivery_terms.loss_risk_responsibility_code", location_qual)
+
+        # FOB*03 = Description (shipping terms description)
+        description = _get_element_value(fob_seg, 3)
+        if description:
+            delivery.delivery_terms.special_terms = description
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("FOB*03", "delivery[0].delivery_terms.special_terms", description)
+
+        # FOB*05 = Incoterms code (if present, takes precedence for id)
+        incoterms = _get_element_value(fob_seg, 5)
+        if incoterms:
+            delivery.delivery_terms.id = incoterms
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("FOB*05", "delivery[0].delivery_terms.id", incoterms)
 
     def _set_nested_value_with_construction(
         self,

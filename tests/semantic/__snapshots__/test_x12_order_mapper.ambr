@@ -87,6 +87,10 @@
             'street_name': '1000 BABELWAY PL',
           }),
         }),
+        'delivery_terms': dict({
+          'loss_risk_responsibility_code': 'ZZ',
+          'special_terms': 'UPS Ground #442E1W',
+        }),
       }),
     ]),
     'delivery_terms': 'PP',

@@ -70,15 +70,13 @@ _HEADER_FIELD_MAPPINGS = [
         # Exchange Rate
     ),
     # FOB segment - Delivery Terms / Incoterms
+    # FOB*01 maps to simple delivery_terms string on Order
+    # FOB*02, FOB*03, FOB*05 are mapped to delivery[0].delivery_terms by MappingEngine
+    # after party loops create the delivery object
     FieldMapping(
         seg("FOB", 1),
         sem("delivery_terms"),
         # PP=Prepaid, CC=Collect, etc.
-    ),
-    FieldMapping(
-        seg("FOB", 5),
-        sem("delivery[0].delivery_terms.special_terms"),
-        # Incoterms: FOB, CIF, EXW, etc.
     ),
     # TD5 segment - Carrier Details
     FieldMapping(

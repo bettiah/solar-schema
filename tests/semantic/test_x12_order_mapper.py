@@ -164,6 +164,18 @@ class TestDeclarativeMappingWithFixture:
         assert "4255552515" in contact.telephone
         assert contact.telefax == "4255553875"
 
+    def test_fob_delivery_terms_mapped(self, mapped_order):
+        """Test that FOB*02 and FOB*03 are mapped to delivery[0].delivery_terms."""
+        # FOB*PP*ZZ*UPS Ground #442E1W~
+        assert mapped_order.delivery_terms == "PP"  # FOB*01 -> simple string
+        assert len(mapped_order.delivery) >= 1
+        delivery = mapped_order.delivery[0]
+        assert delivery.delivery_terms is not None
+        # FOB*02 (ZZ = location qualifier)
+        assert delivery.delivery_terms.loss_risk_responsibility_code == "ZZ"
+        # FOB*03 (shipping description)
+        assert delivery.delivery_terms.special_terms == "UPS Ground #442E1W"
+
 
 class TestUnmappedTracking:
     """Test unmapped segment/element tracking."""
