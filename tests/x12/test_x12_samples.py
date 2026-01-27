@@ -481,6 +481,36 @@ class TestSpecificSamples:
         parsed = interchange_to_dict(result.interchange)
         assert parsed == snapshot
 
+    def test_850_purchase_order(
+        self,
+        snapshot,
+    ):
+        """Test parsing 850 Purchase Order sample from logistics directory."""
+        x12_file = LOGISTICS_SAMPLES_DIR / "850_purchase_order.x12"
+        if not x12_file.exists():
+            pytest.skip(f"File not found: {x12_file}")
+
+        # Use 004010 schema to match the sample file version
+        schema_loader = GeneratedX12SchemaLoader(version="004010")
+        result = parse_file(x12_file, schema_loader=schema_loader)
+
+        assert result.interchange is not None
+
+        # Verify structure
+        assert result.interchange.version == "00401"
+        assert len(result.interchange.groups) == 1
+
+        group = result.interchange.groups[0]
+        assert group.functional_id == "PO"
+
+        txn = group.transactions[0]
+        assert txn.transaction_id == "850"
+        assert txn.schema is not None  # Schema should be attached
+
+        # Snapshot the parsed content structure
+        content = [content_item_to_dict(item) for item in txn.content]
+        assert content == snapshot
+
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,

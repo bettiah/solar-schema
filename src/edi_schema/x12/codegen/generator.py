@@ -233,7 +233,7 @@ class SchemaGenerator:
         import re
 
         # Replace special characters with underscores
-        result = re.sub(r"[/\-\(\)\,\.]", "_", name)
+        result = re.sub(r"[/\-\(\)\,\.']", "_", name)
         # Replace spaces with underscores
         result = result.replace(" ", "_")
         # Convert to lowercase

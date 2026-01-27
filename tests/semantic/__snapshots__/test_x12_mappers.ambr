@@ -1,0 +1,102 @@
+# serializer version: 1
+# name: TestX12OrderMapperWithFixture.test_mapped_order_snapshot
+  dict({
+    'accounting_customer_party': dict({
+      'party': dict({
+        'contact': dict({
+          'name': 'Donna Person',
+          'telephone': '4255552515',
+        }),
+        'party_identifications': list([
+          dict({
+            'id': dict({
+              'scheme_id': 'BuyerAssigned',
+              'value': '0857673380000',
+            }),
+          }),
+        ]),
+        'party_names': list([
+          dict({
+            'name': 'CompanyA',
+          }),
+        ]),
+        'postal_address': dict({
+          'city_name': 'City',
+          'country_code': 'US',
+          'country_subentity': 'UT',
+          'postal_zone': '98034',
+          'street_name': '1000 BABELWAY PL',
+        }),
+      }),
+    }),
+    'delivery': list([
+      dict({
+        'delivery_location': dict({
+          'city_name': 'CHICAGO',
+          'country_code': 'US',
+          'country_subentity': 'IL',
+          'postal_zone': '60639-1030',
+          'street_name': '1000 BABELWAY PL',
+        }),
+        'delivery_party': dict({
+          'contact': dict({
+            'name': 'Sender',
+            'telephone': '7735555120',
+          }),
+          'party_identifications': list([
+            dict({
+              'id': dict({
+                'scheme_id': 'BuyerAssigned',
+                'value': '0857673380000',
+              }),
+            }),
+          ]),
+          'party_names': list([
+            dict({
+              'name': 'Company Attn 41309514',
+            }),
+          ]),
+          'postal_address': dict({
+            'city_name': 'CHICAGO',
+            'country_code': 'US',
+            'country_subentity': 'IL',
+            'postal_zone': '60639-1030',
+            'street_name': '1000 BABELWAY PL',
+          }),
+        }),
+      }),
+    ]),
+    'document_currency_code': 'USD',
+    'document_purpose_code': '00',
+    'id': '5907867',
+    'issue_date': '2016-12-06',
+    'line_count': 1,
+    'order_lines': list([
+      dict({
+        'id': '1',
+        'item': dict({
+          'sellers_item_identification': dict({
+            'id': dict({
+              'value': '32230538',
+            }),
+          }),
+        }),
+        'line_extension_amount': dict({
+          'currency': 'USD',
+          'value': '8.90',
+        }),
+        'price': dict({
+          'price_amount': dict({
+            'currency': 'USD',
+            'value': '8.90',
+          }),
+        }),
+        'quantity': dict({
+          'unit_code': 'EA',
+          'value': '1',
+        }),
+      }),
+    ]),
+    'order_type_code': 'DS',
+  })
+# ---

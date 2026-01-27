@@ -391,23 +391,9 @@ class LoopMatcher:
                 advance_segment=True,
             )
 
-        # Strategy 2: Out of order within current loop
-        if current.contains_segment(segment_id):
-            return MatchResult(
-                action=MatchAction.ACCEPT_OUT_OF_ORDER,
-                loop=current,
-                message=f"Segment {segment_id} out of order in loop {current.loop_id}",
-            )
-
-        # Strategy 3: Start of a child loop
-        child_loop = current.find_child_by_first_segment(segment_id)
-        if child_loop:
-            return MatchResult(
-                action=MatchAction.ENTER_CHILD_LOOP,
-                loop=child_loop,
-            )
-
-        # Strategy 4: New iteration of current loop
+        # Strategy 2: New iteration of current loop (check BEFORE out-of-order)
+        # This must be checked before out-of-order because the first segment
+        # of a loop is also in the loop's segment list
         first_seg = current.get_first_segment_id()
         if segment_id == first_seg and self.position._can_iterate():
             return MatchResult(
@@ -415,9 +401,33 @@ class LoopMatcher:
                 loop=current,
             )
 
+        # Strategy 3: Out of order within current loop
+        if current.contains_segment(segment_id):
+            return MatchResult(
+                action=MatchAction.ACCEPT_OUT_OF_ORDER,
+                loop=current,
+                message=f"Segment {segment_id} out of order in loop {current.loop_id}",
+            )
+
+        # Strategy 4: Start of a child loop
+        child_loop = current.find_child_by_first_segment(segment_id)
+        if child_loop:
+            return MatchResult(
+                action=MatchAction.ENTER_CHILD_LOOP,
+                loop=child_loop,
+            )
+
         # Strategy 5: Segment belongs to a parent loop (current ended early)
-        parent_loop, levels = self._find_parent_containing(segment_id)
+        parent_loop, levels, child_loop = self._find_parent_containing(segment_id)
         if parent_loop:
+            if child_loop:
+                # Segment starts a child loop of a parent - enter that loop
+                return MatchResult(
+                    action=MatchAction.ENTER_SIBLING_LOOP,
+                    loop=child_loop,
+                    levels_popped=levels,
+                    message=f"Loop {current.loop_id} ended, entering sibling {child_loop.loop_id}",
+                )
             return MatchResult(
                 action=MatchAction.POP_TO_PARENT,
                 loop=parent_loop,
@@ -452,11 +462,15 @@ class LoopMatcher:
             return segs[idx].segment_id == segment_id
         return False
 
-    def _find_parent_containing(self, segment_id: str) -> tuple[LoopNode | None, int]:
+    def _find_parent_containing(
+        self, segment_id: str
+    ) -> tuple[LoopNode | None, int, LoopNode | None]:
         """
         Find a parent loop that contains this segment.
 
-        Returns (loop, levels_popped) or (None, 0) if not found.
+        Returns (parent_loop, levels_popped, child_loop) or (None, 0, None) if not found.
+
+        If child_loop is not None, the segment starts a child loop of parent_loop.
         """
         levels = 0
         pos = self.position.parent_position
@@ -467,20 +481,20 @@ class LoopMatcher:
 
             # Check if segment is in this loop
             if loop.contains_segment(segment_id):
-                return loop, levels
+                return loop, levels, None
 
             # Check if segment starts a child of this loop
             child = loop.find_child_by_first_segment(segment_id)
             if child:
-                return loop, levels
+                return loop, levels, child
 
             # Check first segment for new iteration
             if loop.get_first_segment_id() == segment_id:
-                return loop, levels
+                return loop, levels, None
 
             pos = pos.parent_position
 
-        return None, 0
+        return None, 0, None
 
     def advance_to(self, result: "MatchResult") -> None:
         """Update position based on match result."""

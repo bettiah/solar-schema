@@ -929,3 +929,207 @@ class TestRoundTrip:
         rest_line = restored.order_lines[0]
         assert rest_line.quantity.value == orig_line.quantity.value
         assert rest_line.quantity.unit_code == orig_line.quantity.unit_code
+
+
+# =============================================================================
+# Fixture-Based X12 850 Mapping Tests
+# =============================================================================
+
+
+class TestX12OrderMapperWithFixture:
+    """Test X12 850 mapping using real fixture files."""
+
+    @pytest.fixture
+    def schema_loader(self):
+        """Create schema loader for parsing - use 004010 to match the sample file."""
+        from edi_schema.x12.schemas import GeneratedX12SchemaLoader
+
+        # The sample file uses version 004010 (see GS segment)
+        return GeneratedX12SchemaLoader(version="004010")
+
+    @pytest.fixture
+    def fixture_path(self):
+        """Path to the 850 purchase order fixture."""
+        from pathlib import Path
+
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "x12_samples"
+            / "logistics"
+            / "850_purchase_order.x12"
+        )
+
+    @pytest.fixture
+    def parsed_850_transaction(self, fixture_path, schema_loader):
+        """Parse the 850 fixture file and return the transaction."""
+        from edi_schema.x12.ast import ErrorSeverity
+        from edi_schema.x12.parser import parse_file
+
+        result = parse_file(fixture_path, schema_loader=schema_loader)
+        assert result.interchange is not None, "Failed to parse interchange"
+        assert len(result.interchange.groups) > 0, "No functional groups found"
+        assert len(result.interchange.groups[0].transactions) > 0, "No transactions found"
+
+        txn = result.interchange.groups[0].transactions[0]
+        assert txn.transaction_id == "850", f"Expected 850, got {txn.transaction_id}"
+
+        # Check for fatal errors only (warnings are acceptable due to loop detection issues)
+        fatal_errors = [e for e in txn.errors if e.severity == ErrorSeverity.FATAL]
+        assert len(fatal_errors) == 0, f"Fatal errors: {fatal_errors}"
+        return txn
+
+    @pytest.fixture
+    def mapped_order(self, parsed_850_transaction):
+        """Map the parsed 850 to semantic Order."""
+        mapper = X12OrderMapper()
+        return mapper.to_semantic(parsed_850_transaction)
+
+    def test_fixture_file_exists(self, fixture_path):
+        """Verify the fixture file exists."""
+        assert fixture_path.exists(), f"Fixture file not found: {fixture_path}"
+
+    def test_order_basic_info(self, mapped_order):
+        """Test basic order information from BEG segment."""
+        assert mapped_order.id == "5907867"
+        assert mapped_order.issue_date == date(2016, 12, 6)
+        assert mapped_order.document_purpose_code == "00"  # Original
+        assert mapped_order.order_type_code == "DS"  # Drop Ship
+
+    def test_order_currency(self, mapped_order):
+        """Test currency from CUR segment."""
+        assert mapped_order.document_currency_code == "USD"
+
+    def test_order_ship_to_party(self, mapped_order):
+        """Test Ship To party from N1*ST loop."""
+        # The 850 sample has ST (Ship To) party
+        assert len(mapped_order.delivery) > 0, "Expected delivery with ship-to party"
+
+        delivery = mapped_order.delivery[0]
+        assert delivery.delivery_party is not None
+
+        ship_to = delivery.delivery_party
+        assert len(ship_to.party_names) > 0
+        assert ship_to.party_names[0].name == "Company Attn 41309514"
+
+        # Check party ID
+        assert len(ship_to.party_identifications) > 0
+        assert ship_to.party_identifications[0].id.value == "0857673380000"
+
+        # Check address
+        assert ship_to.postal_address is not None
+        assert ship_to.postal_address.street_name == "1000 BABELWAY PL"
+        assert ship_to.postal_address.city_name == "CHICAGO"
+        assert ship_to.postal_address.country_subentity == "IL"
+        assert ship_to.postal_address.postal_zone == "60639-1030"
+        assert ship_to.postal_address.country_code == "US"
+
+    def test_order_bill_to_party(self, mapped_order):
+        """Test Bill To party from N1*BT loop."""
+        # The 850 sample has BT (Bill To) party
+        assert mapped_order.accounting_customer_party is not None
+
+        bill_to = mapped_order.accounting_customer_party.party
+        assert len(bill_to.party_names) > 0
+        assert bill_to.party_names[0].name == "CompanyA"
+
+        # Check party ID
+        assert len(bill_to.party_identifications) > 0
+        assert bill_to.party_identifications[0].id.value == "0857673380000"
+
+        # Check address
+        assert bill_to.postal_address is not None
+        assert bill_to.postal_address.street_name == "1000 BABELWAY PL"
+        assert bill_to.postal_address.city_name == "City"
+        assert bill_to.postal_address.country_subentity == "UT"
+        assert bill_to.postal_address.postal_zone == "98034"
+        assert bill_to.postal_address.country_code == "US"
+
+    def test_order_line_items(self, mapped_order):
+        """Test line items from PO1 loop."""
+        assert len(mapped_order.order_lines) == 1
+
+        line = mapped_order.order_lines[0]
+        assert line.id == "1"
+
+        # Quantity
+        assert line.quantity.value == Decimal("1")
+        assert line.quantity.unit_code == "EA"
+
+        # Price
+        assert line.price is not None
+        assert line.price.price_amount.value == Decimal("8.90")
+        assert line.price.price_amount.currency == "USD"
+
+        # Vendor part number
+        assert line.item is not None
+        assert line.item.sellers_item_identification is not None
+        assert line.item.sellers_item_identification.id.value == "32230538"
+
+    def test_order_line_count(self, mapped_order):
+        """Test line count from CTT segment."""
+        assert mapped_order.line_count == 1
+
+    def test_order_line_extension_amount(self, mapped_order):
+        """Test calculated line extension amount."""
+        line = mapped_order.order_lines[0]
+        # 1 EA * $8.90 = $8.90
+        assert line.line_extension_amount is not None
+        assert line.line_extension_amount.value == Decimal("8.90")
+        assert line.line_extension_amount.currency == "USD"
+
+    def test_full_order_structure(self, mapped_order):
+        """Test complete order structure matches expected fixture values."""
+        # This is a comprehensive test that validates the overall mapping
+        expected = {
+            "id": "5907867",
+            "issue_date": date(2016, 12, 6),
+            "currency": "USD",
+            "purpose_code": "00",
+            "order_type": "DS",
+            "line_count": 1,
+            "ship_to_name": "Company Attn 41309514",
+            "ship_to_city": "CHICAGO",
+            "ship_to_state": "IL",
+            "bill_to_name": "CompanyA",
+            "bill_to_city": "City",
+            "bill_to_state": "UT",
+            "line_1_qty": Decimal("1"),
+            "line_1_unit": "EA",
+            "line_1_price": Decimal("8.90"),
+            "line_1_vendor_part": "32230538",
+        }
+
+        # Verify all expected values
+        assert mapped_order.id == expected["id"]
+        assert mapped_order.issue_date == expected["issue_date"]
+        assert mapped_order.document_currency_code == expected["currency"]
+        assert mapped_order.document_purpose_code == expected["purpose_code"]
+        assert mapped_order.order_type_code == expected["order_type"]
+        assert mapped_order.line_count == expected["line_count"]
+
+        # Ship To
+        ship_to = mapped_order.delivery[0].delivery_party
+        assert ship_to.party_names[0].name == expected["ship_to_name"]
+        assert ship_to.postal_address.city_name == expected["ship_to_city"]
+        assert ship_to.postal_address.country_subentity == expected["ship_to_state"]
+
+        # Bill To
+        bill_to = mapped_order.accounting_customer_party.party
+        assert bill_to.party_names[0].name == expected["bill_to_name"]
+        assert bill_to.postal_address.city_name == expected["bill_to_city"]
+        assert bill_to.postal_address.country_subentity == expected["bill_to_state"]
+
+        # Line 1
+        line = mapped_order.order_lines[0]
+        assert line.quantity.value == expected["line_1_qty"]
+        assert line.quantity.unit_code == expected["line_1_unit"]
+        assert line.price.price_amount.value == expected["line_1_price"]
+        assert line.item.sellers_item_identification.id.value == expected["line_1_vendor_part"]
+
+    def test_mapped_order_snapshot(self, mapped_order, snapshot):
+        """Snapshot test for the full mapped Order structure."""
+        # Convert to dict for snapshot comparison (Pydantic model)
+        # Exclude None values for cleaner snapshot
+        order_dict = mapped_order.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+        assert order_dict == snapshot

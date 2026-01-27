@@ -189,17 +189,30 @@ def format_x12_amount(amount: Decimal | None, implied_decimals: int = 2) -> str:
     return str(amount)
 
 
-def find_segment(content: list["ParsedSegment | LoopInstance"], tag: str) -> "ParsedSegment | None":
+def find_segment(
+    content: list["ParsedSegment | LoopInstance"], tag: str, search_loops: bool = True
+) -> "ParsedSegment | None":
     """
     Find the first segment with the given tag in content.
 
-    Searches through top-level segments only, not inside loops.
+    Args:
+        content: List of segments and loops
+        tag: Segment tag to find
+        search_loops: If True, also searches inside loops (default True)
+
+    Returns:
+        First matching ParsedSegment or None
     """
-    from edi_schema.x12.ast import ParsedSegment
+    from edi_schema.x12.ast import LoopInstance, ParsedSegment
 
     for item in content:
         if isinstance(item, ParsedSegment) and item.tag == tag:
             return item
+        if search_loops and isinstance(item, LoopInstance):
+            # Search inside the loop
+            for seg in item.segments:
+                if seg.tag == tag:
+                    return seg
     return None
 
 
@@ -233,10 +246,67 @@ def find_all_loops(
 ) -> list["LoopInstance"]:
     """
     Find all loops with the given ID in content.
-    """
-    from edi_schema.x12.ast import LoopInstance
 
-    return [item for item in content if isinstance(item, LoopInstance) and item.loop_id == loop_id]
+    This includes:
+    1. Proper LoopInstance objects with the given loop_id
+    2. "Implicit loops" - standalone segments that should logically form a loop
+       but weren't detected as such by the parser
+
+    For implicit loops, this function groups consecutive segments starting with
+    the loop trigger segment (e.g., N1, PO1) into synthetic LoopInstance objects.
+    """
+    from edi_schema.x12.ast import LoopInstance, ParsedSegment
+
+    results = []
+
+    # Mapping of loop_id to their expected child segments
+    LOOP_CHILD_SEGMENTS = {
+        "N1": {"N1", "N2", "N3", "N4", "PER", "REF"},
+        "PO1": {"PO1", "PID", "SAC", "DTM", "MEA", "CTP", "PAM", "PO3", "PO4", "REF"},
+        "IT1": {"IT1", "PID", "SAC", "DTM", "MEA", "CTP", "REF", "SLN"},
+    }
+
+    child_segments = LOOP_CHILD_SEGMENTS.get(loop_id, {loop_id})
+    i = 0
+    while i < len(content):
+        item = content[i]
+
+        if isinstance(item, LoopInstance) and item.loop_id == loop_id:
+            results.append(item)
+            i += 1
+        elif isinstance(item, ParsedSegment) and item.tag == loop_id:
+            # Found a standalone segment that should start a loop
+            # Collect consecutive segments that belong to this implicit loop
+            segments = [item]
+            j = i + 1
+            while j < len(content):
+                next_item = content[j]
+                if isinstance(next_item, ParsedSegment) and next_item.tag in child_segments:
+                    # This segment belongs to the same loop
+                    if next_item.tag == loop_id:
+                        # New loop trigger - stop here
+                        break
+                    segments.append(next_item)
+                    j += 1
+                elif isinstance(next_item, LoopInstance):
+                    # Hit a different loop - stop here
+                    break
+                else:
+                    # Different segment - stop here
+                    break
+
+            # Create synthetic LoopInstance
+            implicit_loop = LoopInstance(
+                loop_id=loop_id,
+                segments=segments,
+                children=[],
+            )
+            results.append(implicit_loop)
+            i = j
+        else:
+            i += 1
+
+    return results
 
 
 def find_segment_in_loop(loop: "LoopInstance", tag: str) -> "ParsedSegment | None":
