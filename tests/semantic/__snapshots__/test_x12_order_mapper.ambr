@@ -35,6 +35,15 @@
     }),
     'anticipated_monetary_total': dict({
     }),
+    'buyer_customer_party': dict({
+      'buyer_contact': dict({
+        'name': 'Donna Person',
+        'telefax': '4255553875',
+        'telephone': '4255552515 ',
+      }),
+      'party': dict({
+      }),
+    }),
     'delivery': list([
       dict({
         'delivery_location': dict({

@@ -153,6 +153,17 @@ class TestDeclarativeMappingWithFixture:
         # Contact name from PER*02
         assert bt_party.party.contact.name is not None
 
+    def test_header_level_per_mapped(self, mapped_order):
+        """Test that header-level PER*OC is mapped to buyer_contact."""
+        # Header-level PER*OC*Donna Person*TE*4255552515*FX*4255553875~
+        assert mapped_order.buyer_customer_party is not None
+        assert mapped_order.buyer_customer_party.buyer_contact is not None
+        contact = mapped_order.buyer_customer_party.buyer_contact
+        assert contact.name == "Donna Person"
+        assert contact.telephone is not None
+        assert "4255552515" in contact.telephone
+        assert contact.telefax == "4255553875"
+
 
 class TestUnmappedTracking:
     """Test unmapped segment/element tracking."""

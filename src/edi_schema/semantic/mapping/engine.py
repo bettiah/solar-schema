@@ -571,9 +571,12 @@ class MappingEngine:
                         )
                         break  # Only report once per segment type
 
-        # Second pass: check for header-level PER/N2/N3/N4 segments
-        # These are only handled within N1 loops, so header-level ones are unmapped
-        header_level_party_segments = {"PER", "N2", "N3", "N4"}
+        # Second pass: check for header-level N2/N3/N4 segments
+        # PER is now handled at header level for 850/810/856, but N2/N3/N4 are only in N1 loops
+        header_level_party_segments = {"N2", "N3", "N4"}
+        # Only flag header-level PER if we don't process it
+        if self.mapping.transaction_id not in ("850", "810", "856"):
+            header_level_party_segments.add("PER")
         for item in content:
             # Only check direct children of content (not inside loops)
             if hasattr(item, "tag") and item.tag in header_level_party_segments:
@@ -789,6 +792,10 @@ class MappingEngine:
                     metrics,
                     trace,
                 )
+
+            # Phase 6.5: Map header-level PER segments (outside N1 loops)
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_header_per_segments(model, content, metrics, trace)
 
             # Phase 7: Map item loops (PO1, IT1, etc.)
             loop_start = time.perf_counter()
@@ -2290,6 +2297,106 @@ class MappingEngine:
                     metrics.fields_mapped += 1
                 if trace:
                     trace.add_field("TXI", "tax_total[+]", str(tax_total))
+
+    def _map_header_per_segments(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map header-level PER (Contact) segments that appear outside N1 loops.
+
+        Header-level PER segments specify contacts at the document level, such as:
+        - PER*OC = Order Contact -> buyer_customer_party.buyer_contact
+        - PER*IC = Information Contact -> accounting_customer_party contact
+        - PER*BD = Buyer Contact -> buyer_customer_party.buyer_contact
+        """
+        from edi_schema.semantic.models import Contact, CustomerParty, Party
+
+        # Find header-level PER segments (direct children of content, not in loops)
+        for item in content:
+            if not hasattr(item, "tag") or item.tag != "PER":
+                continue
+
+            # Extract contact info
+            qualifier = _get_element_value(item, 1)  # OC, IC, BD, etc.
+            name = _get_element_value(item, 2)
+
+            if not name:
+                continue
+
+            contact = Contact(name=name)
+
+            # Process paired qualifier/value elements (PER*03-08)
+            for i in range(3, 9, 2):
+                qual = _get_element_value(item, i)
+                val = _get_element_value(item, i + 1)
+                if qual and val:
+                    if qual == "TE":
+                        contact.telephone = val
+                    elif qual == "EM":
+                        contact.electronic_mail = val
+                    elif qual == "FX":
+                        contact.telefax = val
+
+            if metrics:
+                metrics.fields_mapped += 1
+
+            # Map to appropriate model field based on qualifier
+            if qualifier in ("OC", "BD"):
+                # Order Contact or Buyer Contact -> buyer_customer_party.buyer_contact
+                if hasattr(model, "buyer_customer_party"):
+                    if model.buyer_customer_party is None:
+                        model.buyer_customer_party = CustomerParty(party=Party())
+                    model.buyer_customer_party.buyer_contact = contact
+                    if trace:
+                        trace.add_field(
+                            f"PER*{qualifier}",
+                            "buyer_customer_party.buyer_contact",
+                            contact.name,
+                        )
+            elif qualifier == "IC":
+                # Information Contact -> accounting_customer_party or buyer party
+                if hasattr(model, "accounting_customer_party"):
+                    if model.accounting_customer_party is None:
+                        model.accounting_customer_party = CustomerParty(party=Party())
+                    if model.accounting_customer_party.party is None:
+                        model.accounting_customer_party.party = Party()
+                    model.accounting_customer_party.party.contact = contact
+                    if trace:
+                        trace.add_field(
+                            f"PER*{qualifier}",
+                            "accounting_customer_party.party.contact",
+                            contact.name,
+                        )
+                elif hasattr(model, "buyer_customer_party"):
+                    if model.buyer_customer_party is None:
+                        model.buyer_customer_party = CustomerParty(party=Party())
+                    if model.buyer_customer_party.party is None:
+                        model.buyer_customer_party.party = Party()
+                    model.buyer_customer_party.party.contact = contact
+                    if trace:
+                        trace.add_field(
+                            f"PER*{qualifier}",
+                            "buyer_customer_party.party.contact",
+                            contact.name,
+                        )
+            else:
+                # Unknown qualifier - still try to map to buyer party contact
+                if hasattr(model, "buyer_customer_party"):
+                    if model.buyer_customer_party is None:
+                        model.buyer_customer_party = CustomerParty(party=Party())
+                    if model.buyer_customer_party.party is None:
+                        model.buyer_customer_party.party = Party()
+                    if model.buyer_customer_party.party.contact is None:
+                        model.buyer_customer_party.party.contact = contact
+                        if trace:
+                            trace.add_field(
+                                f"PER*{qualifier}",
+                                "buyer_customer_party.party.contact",
+                                contact.name,
+                            )
 
     def _set_nested_value_with_construction(
         self,
