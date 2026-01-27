@@ -282,6 +282,55 @@ _REF_QUALIFIED_MAPPINGS = QualifiedMapping(
                 # Internal Vendor Number
             ),
         ],
+        "8M": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Related Vendor Order Number
+            ),
+        ],
+        "IV": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Seller's Invoice Number
+            ),
+        ],
+        "SI": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Shipper's Identifying Number
+            ),
+        ],
+        "KK": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Customer Account Number
+            ),
+        ],
+        "SE": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Serial Number
+            ),
+        ],
+        "TN": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Transaction Reference Number
+            ),
+        ],
+        "ZZ": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Mutually Defined
+            ),
+        ],
     },
 )
 
@@ -327,6 +376,34 @@ _N9_QUALIFIED_MAPPINGS = QualifiedMapping(
                 seg("N9", 2),
                 sem("additional_document_references[+].id"),
                 # Agreement Number
+            ),
+        ],
+        "ZZ": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Mutually Defined
+            ),
+        ],
+        "PD": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Promotion/Deal Number
+            ),
+        ],
+        "L1": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Letters or Notes
+            ),
+        ],
+        "OQ": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Order Number
             ),
         ],
     },

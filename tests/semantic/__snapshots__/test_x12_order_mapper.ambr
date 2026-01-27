@@ -33,6 +33,14 @@
         }),
       }),
     }),
+    'additional_document_references': list([
+      dict({
+        'id': 'COMPANYB',
+      }),
+      dict({
+        'id': 'TEXT',
+      }),
+    ]),
     'anticipated_monetary_total': dict({
     }),
     'buyer_customer_party': dict({

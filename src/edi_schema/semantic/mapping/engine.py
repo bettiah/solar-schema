@@ -220,6 +220,7 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
     - Nested paths: "buyer.party.name" -> obj.buyer.party.name = value
     - List append: "order_lines[+]" -> obj.order_lines.append(value)
     - List index: "order_lines[0].id" -> obj.order_lines[0].id = value
+    - List append with field: "items[+].id" -> creates new item, sets id, appends
 
     Returns True if successful, False otherwise.
     """
@@ -234,8 +235,10 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
             # List access
             index_str = part[1:-1]
             if index_str == "+":
-                # Append creates new item, can't navigate further here
-                return False
+                # Append with nested field: need to create new item and continue
+                # Find the list attribute from the previous part
+                remaining_parts = parts[i + 1:]
+                return _handle_append_with_nested(current, remaining_parts, value)
             try:
                 index = int(index_str)
                 if isinstance(current, list) and 0 <= index < len(current):
@@ -285,6 +288,54 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
             except (AttributeError, TypeError, ValueError):
                 return False
         return False
+
+
+def _handle_append_with_nested(list_obj: list, remaining_parts: list[str], value: Any) -> bool:
+    """Handle appending to a list with nested field assignment.
+
+    For paths like "items[+].id", this:
+    1. Gets the list element type from type hints
+    2. Creates a new instance
+    3. Sets the nested field value
+    4. Appends to the list
+    """
+    if not isinstance(list_obj, list):
+        return False
+
+    if not remaining_parts:
+        list_obj.append(value)
+        return True
+
+    # Try to get the element type from the list's type annotation
+    # This is tricky since we don't have direct access to the parent's type hints
+    # Instead, we'll try to create a DocumentReference directly for known cases
+    from edi_schema.semantic.models import DocumentReference, Identifier
+
+    # Create a new item - assume DocumentReference for now
+    # This is a simplification; a more robust solution would use type introspection
+    new_item = None
+    remaining_path = ".".join(remaining_parts)
+
+    # Common patterns for document references
+    if remaining_path == "id" or remaining_path.endswith(".id"):
+        new_item = DocumentReference(id=value)
+    else:
+        # Try to create a generic object and set the field
+        try:
+            new_item = DocumentReference()
+            if set_nested_attr(new_item, remaining_path, value):
+                pass  # Successfully set the field
+            else:
+                # If DocumentReference doesn't work, try with Identifier
+                new_item = DocumentReference(id=Identifier(value=str(value)))
+        except Exception:
+            return False
+
+    if new_item is not None:
+        list_obj.append(new_item)
+        return True
+
+    return False
 
 
 def _parse_path_parts(path: str) -> list[str]:
