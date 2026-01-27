@@ -237,3 +237,48 @@ The `[+]` syntax in semantic paths indicates "append to list":
 | `models/order.py` | Added `payee_party` field |
 | `models/payment.py` | Added `settlement_period_days` field |
 | `tests/semantic/test_x12_order_mapper.py` | Added tests for product ID scheme, party identifications, delivery terms, contact info |
+
+---
+
+## Known Gaps (2024-01-27)
+
+Despite ~95% structural coverage, real-world EDI files contain data that is silently dropped:
+
+### Critical Issues
+
+1. **Header-level PER segments not processed**
+   - Example: `PER*OC*Donna Person*TE*4255552515*FX*4255553875~`
+   - PER segments outside N1 loops are completely ignored
+   - **See:** [850-comprehensive-mappings.md](850-comprehensive-mappings.md) Phase 1
+
+2. **Many REF qualifiers not recognized**
+   - Example: `REF*8M*COMPANYB*ORIGIN~` (8M not mapped)
+   - Only 8 of 100+ possible REF qualifiers are mapped
+   - **See:** [850-comprehensive-mappings.md](850-comprehensive-mappings.md) Phase 2
+
+3. **FOB segment incomplete**
+   - Example: `FOB*PP*ZZ*UPS Ground #442E1W~`
+   - Only elements 01 and 05 mapped; elements 02, 03, 07, 08 ignored
+   - **See:** [850-comprehensive-mappings.md](850-comprehensive-mappings.md) Phase 3
+
+4. **Silent failures - no warnings**
+   - Unmapped segments/elements are silently skipped
+   - No metrics or warnings for data loss
+   - **See:** [unmapped-tracking.md](unmapped-tracking.md)
+
+### Related Plans
+
+| Plan | Description | Priority |
+|------|-------------|----------|
+| [unmapped-tracking.md](unmapped-tracking.md) | Add warnings/metrics for unmapped data | HIGH |
+| [850-comprehensive-mappings.md](850-comprehensive-mappings.md) | Complete all field mappings | HIGH |
+
+---
+
+## Next Steps
+
+1. Implement unmapped tracking (critical for debugging)
+2. Add header-level PER processing
+3. Expand REF/N9 qualifier mappings
+4. Complete FOB segment mapping
+5. Add CSH, PKG segment support
