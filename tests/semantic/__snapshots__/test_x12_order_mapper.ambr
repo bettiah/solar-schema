@@ -91,6 +91,24 @@
           'loss_risk_responsibility_code': 'ZZ',
           'special_terms': 'UPS Ground #442E1W',
         }),
+        'shipment': dict({
+          'carrier_party': dict({
+            'party_identifications': list([
+              dict({
+                'id': dict({
+                  'scheme_id': '2',
+                  'value': 'UPSN',
+                }),
+              }),
+            ]),
+          }),
+          'shipment_stages': list([
+            dict({
+              'transit_direction_code': 'UPS Ground #442E2E',
+            }),
+          ]),
+          'shipping_priority_level_code': 'SG',
+        }),
       }),
     ]),
     'delivery_terms': 'PP',
@@ -99,6 +117,9 @@
     'id': '5907867',
     'issue_date': '2016-12-06',
     'line_count': 1,
+    'note': list([
+      'If items are available for partial shipment, please contact companyA@trading.com for authorization prior to release',
+    ]),
     'order_lines': list([
       dict({
         'id': '1',

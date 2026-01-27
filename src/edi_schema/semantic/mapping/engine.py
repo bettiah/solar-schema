@@ -621,6 +621,16 @@ class MappingEngine:
                 elements["FOB"] = set()
             elements["FOB"].update({2, 3, 5})
 
+            # TD5*02, TD5*03, TD5*04, TD5*05, TD5*12 are handled by _map_td5_to_shipment
+            if "TD5" not in elements:
+                elements["TD5"] = set()
+            elements["TD5"].update({2, 3, 4, 5, 12})
+
+            # MSG*01 is handled by _map_msg_notes
+            if "MSG" not in elements:
+                elements["MSG"] = set()
+            elements["MSG"].add(1)
+
         return elements
 
     def _collect_segment_tags(
@@ -659,6 +669,9 @@ class MappingEngine:
         handled_segments = self._mapped_segments | {
             "ST", "SE",  # Transaction envelope
         }
+        # Add segments handled by special handlers for 850/810/856
+        if self.mapping.transaction_id in ("850", "810", "856"):
+            handled_segments |= {"TD5", "MSG"}  # Handled by _map_td5_to_shipment, _map_msg_notes
         # N2, N3, N4, PER are only handled WITHIN N1 loops, not at header level
 
         # Also include segments from loops that have mappings
@@ -926,6 +939,14 @@ class MappingEngine:
             # Phase 6.6: Map FOB delivery terms to delivery (now that delivery exists)
             if self.mapping.transaction_id in ("850", "810", "856"):
                 self._map_fob_to_delivery(model, content, metrics, trace)
+
+            # Phase 6.7: Map TD5 carrier/shipping info to delivery[0].shipment
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_td5_to_shipment(model, content, metrics, trace)
+
+            # Phase 6.8: Map MSG notes to note list
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_msg_notes(model, content, metrics, trace)
 
             # Phase 7: Map item loops (PO1, IT1, etc.)
             loop_start = time.perf_counter()
@@ -2611,6 +2632,131 @@ class MappingEngine:
                 metrics.fields_mapped += 1
             if trace:
                 trace.add_field("FOB*05", "delivery[0].delivery_terms.id", incoterms)
+
+    def _map_td5_to_shipment(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map TD5 segment to delivery[0].shipment.
+
+        Creates a Shipment object if TD5 data is present, then populates:
+        - TD5*02/03: carrier_party identification
+        - TD5*04: transport mode code
+        - TD5*05: routing/transit direction
+        - TD5*12: service level code
+        """
+        from edi_schema.semantic.models import (
+            Identifier,
+            Party,
+            PartyIdentification,
+            Shipment,
+            ShipmentStage,
+        )
+
+        # Only proceed if there's at least one delivery
+        if not hasattr(model, "delivery") or not model.delivery:
+            return
+
+        delivery = model.delivery[0]
+
+        # Find TD5 segment
+        td5_seg = find_segment(content, "TD5")
+        if not td5_seg:
+            return
+
+        # Check if there's any TD5 data to map
+        id_qual = _get_element_value(td5_seg, 2)
+        carrier_id = _get_element_value(td5_seg, 3)
+        transport_mode = _get_element_value(td5_seg, 4)
+        routing = _get_element_value(td5_seg, 5)
+        service_level = _get_element_value(td5_seg, 12)
+
+        if not any([id_qual, carrier_id, transport_mode, routing, service_level]):
+            return
+
+        # Create Shipment if needed
+        if delivery.shipment is None:
+            delivery.shipment = Shipment()
+
+        shipment = delivery.shipment
+
+        # TD5*02/03 = Carrier identification (qualifier/ID)
+        if carrier_id:
+            scheme_id = id_qual or "SCAC"  # Default to SCAC if no qualifier
+            carrier_party = Party(
+                party_identifications=[
+                    PartyIdentification(id=Identifier(value=carrier_id, scheme_id=scheme_id))
+                ]
+            )
+            shipment.carrier_party = carrier_party
+            if metrics:
+                metrics.fields_mapped += 2
+            if trace:
+                trace.add_field("TD5*02", "delivery[0].shipment.carrier_party.party_identifications[0].id.scheme_id", scheme_id)
+                trace.add_field("TD5*03", "delivery[0].shipment.carrier_party.party_identifications[0].id.value", carrier_id)
+
+        # TD5*04 = Transport mode (A=Air, M=Motor, R=Rail, S=Ship)
+        # TD5*05 = Routing/transit direction
+        if transport_mode or routing:
+            if not shipment.shipment_stages:
+                shipment.shipment_stages = [ShipmentStage()]
+            stage = shipment.shipment_stages[0]
+            if transport_mode:
+                stage.transport_mode_code = transport_mode
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("TD5*04", "delivery[0].shipment.shipment_stages[0].transport_mode_code", transport_mode)
+            if routing:
+                stage.transit_direction_code = routing
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("TD5*05", "delivery[0].shipment.shipment_stages[0].transit_direction_code", routing)
+
+        # TD5*12 = Service level code (SG=Standard Ground, etc.)
+        if service_level:
+            shipment.shipping_priority_level_code = service_level
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("TD5*12", "delivery[0].shipment.shipping_priority_level_code", service_level)
+
+    def _map_msg_notes(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map MSG segments to the note list.
+
+        Appends each MSG*01 value to the model's note list.
+        Searches both header level and inside loops (e.g., N9 loops).
+        """
+        if not hasattr(model, "note"):
+            return
+
+        def find_msg_segments(items: list) -> None:
+            """Recursively find MSG segments in content."""
+            for item in items:
+                if hasattr(item, "tag") and item.tag == "MSG":
+                    note_text = _get_element_value(item, 1)
+                    if note_text:
+                        model.note.append(note_text)
+                        if metrics:
+                            metrics.fields_mapped += 1
+                        if trace:
+                            trace.add_field("MSG*01", f"note[{len(model.note) - 1}]", note_text)
+                # Search inside loops (but not PO1 line item loops - those have their own notes)
+                if hasattr(item, "segments") and hasattr(item, "loop_id"):
+                    if item.loop_id not in ("PO1", "IT1", "SLN"):  # Skip line item loops
+                        find_msg_segments(item.segments)
+
+        find_msg_segments(content)
 
     def _set_nested_value_with_construction(
         self,

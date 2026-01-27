@@ -79,31 +79,7 @@ _HEADER_FIELD_MAPPINGS = [
         # PP=Prepaid, CC=Collect, etc.
     ),
     # TD5 segment - Carrier Details
-    FieldMapping(
-        seg("TD5", 2),
-        sem("delivery[0].shipment.carrier_party.party_identifications[0].id.scheme_id"),
-        # ID Code Qualifier: 2=SCAC
-    ),
-    FieldMapping(
-        seg("TD5", 3),
-        sem("delivery[0].shipment.carrier_party.party_identifications[0].id.value"),
-        # Carrier ID (SCAC code)
-    ),
-    FieldMapping(
-        seg("TD5", 4),
-        sem("delivery[0].shipment.shipment_stages[0].transport_mode_code"),
-        # Transport Method: A=Air, M=Motor, R=Rail, S=Ship, etc.
-    ),
-    FieldMapping(
-        seg("TD5", 5),
-        sem("delivery[0].shipment.shipment_stages[0].transit_direction_code"),
-        # Routing description
-    ),
-    FieldMapping(
-        seg("TD5", 12),
-        sem("delivery[0].shipment.shipping_priority_level_code"),
-        # Service Level Code: SG=Standard Ground, etc.
-    ),
+    # Handled by MappingEngine._map_td5_to_shipment() which creates the Shipment object
     # TD1 segment - Packaging / Lading
     FieldMapping(
         seg("TD1", 1),
@@ -151,10 +127,7 @@ _HEADER_FIELD_MAPPINGS = [
         to_semantic_transform=PARSE_DECIMAL,
     ),
     # MSG segment - Notes
-    FieldMapping(
-        seg("MSG", 1),
-        sem("note[0]"),
-    ),
+    # Handled by MappingEngine._map_msg_notes() which appends to the note list
 ]
 
 

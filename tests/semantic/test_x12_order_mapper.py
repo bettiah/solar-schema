@@ -238,10 +238,11 @@ class TestUnmappedTracking:
 
         # CANNOT_SET_FIELD warnings for failed mappings (path doesn't exist on model)
         cannot_set = warnings_by_code.get(MappingErrorCode.CANNOT_SET_FIELD, [])
-        # TD5 mappings fail because delivery[0].shipment is None
-        assert any('TD5' in p for p in cannot_set), f"Expected TD5 warning, got {cannot_set}"
-        # MSG mapping fails because note list is empty
-        assert any('MSG' in p for p in cannot_set), f"Expected MSG warning, got {cannot_set}"
+        # Note: TD5 and MSG are now handled by special handlers that create intermediate objects
+        # AMT*TT mapping fails because anticipated_monetary_total.payable_amount is None
+        assert any('AMT' in p for p in cannot_set), f"Expected AMT warning, got {cannot_set}"
+        # DTM*010 mapping fails because delivery[0].despatch is None
+        assert any('DTM' in p for p in cannot_set), f"Expected DTM warning, got {cannot_set}"
 
         # The sample file should have some unmapped data
         assert result.metrics.total_segments_in_document > 0
