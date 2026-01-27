@@ -37,6 +37,9 @@ ORDER_PARTY_QUALIFIERS = {
     "ST": sem("delivery[+].delivery_party"),
     "BT": sem("accounting_customer_party"),
     "OB": sem("originator_customer_party"),
+    "SF": sem("delivery[0].despatch.despatch_party"),  # Ship From
+    "CA": sem("freight_forwarder_party"),  # Carrier
+    "RI": sem("payee_party"),  # Remit To
 }
 
 

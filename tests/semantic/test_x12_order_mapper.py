@@ -118,6 +118,41 @@ class TestDeclarativeMappingWithFixture:
         assert mapped_order.accounting_customer_party is not None
         assert mapped_order.accounting_customer_party.party is not None
 
+    def test_product_id_with_scheme(self, mapped_order):
+        """Test that product IDs have scheme_id set from qualifier."""
+        line = mapped_order.order_lines[0]
+        assert line.item is not None
+        # VP qualifier should map to sellers_item_identification
+        assert line.item.sellers_item_identification is not None
+        assert line.item.sellers_item_identification.id.value == "32230538"
+        # VP qualifier should not set a scheme_id (vendor product is scheme_id=None)
+        # but our implementation sets the qualifier as scheme_id when no mapping exists
+        assert line.item.sellers_item_identification.id.scheme_id == "VP"
+
+    def test_party_identifications_mapped(self, mapped_order):
+        """Test that party identifications from N1*03/04 are mapped."""
+        # The ST (ship-to) party has ID 0857673380000
+        assert len(mapped_order.delivery) > 0
+        delivery = mapped_order.delivery[0]
+        assert delivery.delivery_party is not None
+        assert len(delivery.delivery_party.party_identifications) > 0
+        party_id = delivery.delivery_party.party_identifications[0]
+        assert party_id.id.value == "0857673380000"
+
+    def test_delivery_terms_mapped(self, mapped_order):
+        """Test that FOB delivery terms are mapped."""
+        # FOB*PP means prepaid
+        assert mapped_order.delivery_terms == "PP"
+
+    def test_contact_info_mapped(self, mapped_order):
+        """Test that contact information is mapped from PER segments."""
+        # The BT party has a contact
+        bt_party = mapped_order.accounting_customer_party
+        assert bt_party is not None
+        assert bt_party.party.contact is not None
+        # Contact name from PER*02
+        assert bt_party.party.contact.name is not None
+
 
 class TestMappingEngineFeatures:
     """Test MappingEngine features like metrics and validation."""

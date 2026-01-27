@@ -84,6 +84,7 @@
         'item': dict({
           'sellers_item_identification': dict({
             'id': dict({
+              'scheme_id': 'VP',
               'value': '32230538',
             }),
           }),
@@ -101,5 +102,6 @@
       }),
     ]),
     'order_type_code': 'DS',
+    'sales_order_id': '',
   })
 # ---

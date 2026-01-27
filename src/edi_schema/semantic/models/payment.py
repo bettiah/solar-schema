@@ -82,6 +82,11 @@ class PaymentTerms(SemanticModel):
         default=None,
         description="Period for settlement discount",
     )
+    settlement_period_days: int | None = Field(
+        default=None,
+        ge=0,
+        description="Number of days for settlement discount",
+    )
     penalty_period: Period | None = Field(
         default=None,
         description="Period for penalty calculation",

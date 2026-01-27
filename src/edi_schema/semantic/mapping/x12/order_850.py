@@ -4,10 +4,8 @@ X12 850 Purchase Order Mapping Definition.
 Declarative mapping from X12 850 Purchase Order to semantic Order model.
 """
 
-from decimal import Decimal
-
-from edi_schema.semantic.models import Item, Order, OrderLine
-from ..transforms import PARSE_DATE, PARSE_DECIMAL, TO_INT, Transform
+from edi_schema.semantic.models import Order, OrderLine
+from ..transforms import PARSE_DATE, PARSE_DECIMAL, TO_INT
 from ..types import (
     FieldMapping,
     LoopMapping,
@@ -19,57 +17,6 @@ from ..types import (
 )
 from .shared.parties import ORDER_PARTY_QUALIFIERS
 from .validations.order_rules import ORDER_VALIDATION_RULES
-
-
-# =============================================================================
-# Custom Transforms for 850
-# =============================================================================
-
-
-def _build_item_from_po1_elements(po1_data: dict) -> Item:
-    """Build Item from PO1 product ID qualifier/value pairs."""
-    from ....models import Identifier, ItemIdentification
-
-    item = Item()
-
-    # Process product ID pairs
-    for i in range(6, 26, 2):
-        qualifier = po1_data.get(f"elem_{i}")
-        value = po1_data.get(f"elem_{i + 1}")
-
-        if qualifier and value:
-            field_type, scheme = _map_product_id_qualifier(qualifier)
-            item_id = ItemIdentification(id=Identifier(value=value, scheme_id=scheme))
-
-            if field_type == "standard":
-                item.standard_item_identification = item_id
-            elif field_type == "sellers":
-                item.sellers_item_identification = item_id
-            elif field_type == "buyers":
-                item.buyers_item_identification = item_id
-            elif field_type == "manufacturers":
-                item.manufacturers_item_identification = item_id
-            else:
-                item.additional_item_identifications.append(item_id)
-
-    return item
-
-
-def _map_product_id_qualifier(qualifier: str) -> tuple[str, str | None]:
-    """Map X12 product ID qualifier to (field_type, scheme)."""
-    qualifier_map = {
-        "UP": ("standard", "UPC"),
-        "EN": ("standard", "EAN"),
-        "UK": ("standard", "UCC/EAN-128"),
-        "VP": ("sellers", None),
-        "BP": ("buyers", None),
-        "MG": ("manufacturers", None),
-        "SK": ("sellers", None),
-        "IN": ("buyers", None),
-        "MN": ("manufacturers", None),
-        "SN": ("additional", "Serial"),
-    }
-    return qualifier_map.get(qualifier, ("additional", None))
 
 
 # =============================================================================
@@ -95,10 +42,20 @@ _HEADER_FIELD_MAPPINGS = [
         required=True,
     ),
     FieldMapping(
+        seg("BEG", 4),
+        sem("sales_order_id"),
+        # Release Number (for blanket POs)
+    ),
+    FieldMapping(
         seg("BEG", 5),
         sem("issue_date"),
         to_semantic_transform=PARSE_DATE,
         required=True,
+    ),
+    FieldMapping(
+        seg("BEG", 6),
+        sem("contract_document_reference.id"),
+        # Contract Number
     ),
     # CUR segment - Currency
     FieldMapping(
@@ -106,17 +63,73 @@ _HEADER_FIELD_MAPPINGS = [
         sem("document_currency_code"),
         default="USD",
     ),
+    FieldMapping(
+        seg("CUR", 3),
+        sem("pricing_exchange_rate"),
+        to_semantic_transform=PARSE_DECIMAL,
+        # Exchange Rate
+    ),
     # FOB segment - Delivery Terms / Incoterms
     FieldMapping(
         seg("FOB", 1),
         sem("delivery_terms"),
         # PP=Prepaid, CC=Collect, etc.
     ),
+    FieldMapping(
+        seg("FOB", 5),
+        sem("delivery[0].delivery_terms.special_terms"),
+        # Incoterms: FOB, CIF, EXW, etc.
+    ),
+    # TD5 segment - Carrier Details
+    FieldMapping(
+        seg("TD5", 2),
+        sem("delivery[0].shipment.carrier_party.party_identifications[0].id.scheme_id"),
+        # ID Code Qualifier: 2=SCAC
+    ),
+    FieldMapping(
+        seg("TD5", 3),
+        sem("delivery[0].shipment.carrier_party.party_identifications[0].id.value"),
+        # Carrier ID (SCAC code)
+    ),
+    FieldMapping(
+        seg("TD5", 4),
+        sem("delivery[0].shipment.shipment_stages[0].transport_mode_code"),
+        # Transport Method: A=Air, M=Motor, R=Rail, S=Ship, etc.
+    ),
+    FieldMapping(
+        seg("TD5", 5),
+        sem("delivery[0].shipment.shipment_stages[0].transit_direction_code"),
+        # Routing description
+    ),
+    FieldMapping(
+        seg("TD5", 12),
+        sem("delivery[0].shipment.shipping_priority_level_code"),
+        # Service Level Code: SG=Standard Ground, etc.
+    ),
+    # TD1 segment - Packaging / Lading
+    FieldMapping(
+        seg("TD1", 1),
+        sem("delivery[0].shipment.transport_handling_units[0].transport_handling_unit_type_code"),
+        # Packaging Code: CTN=Carton, PLT=Pallet, etc.
+    ),
+    FieldMapping(
+        seg("TD1", 2),
+        sem("delivery[0].shipment.total_transport_handling_unit_quantity"),
+        to_semantic_transform=TO_INT,
+        # Lading Quantity
+    ),
+    # TD1*06/07/08 = Weight qualifier/value/unit - handled separately
     # ITD segment - Payment Terms (first occurrence)
     FieldMapping(
         seg("ITD", 5),
         sem("payment_terms[0].settlement_discount_percent"),
         to_semantic_transform=PARSE_DECIMAL,
+    ),
+    FieldMapping(
+        seg("ITD", 6),
+        sem("payment_terms[0].settlement_period.end_date"),
+        to_semantic_transform=PARSE_DATE,
+        # Discount Due Date
     ),
     FieldMapping(
         seg("ITD", 7),
@@ -241,6 +254,81 @@ _REF_QUALIFIED_MAPPINGS = QualifiedMapping(
                 sem("additional_document_references[0].id"),
             ),
         ],
+        "BM": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Bill of Lading Number
+            ),
+        ],
+        "IT": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("originator_document_reference.id"),
+                # Internal Order Number
+            ),
+        ],
+        "DP": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Department Number
+            ),
+        ],
+        "IA": [
+            FieldMapping(
+                seg("REF", 2),
+                sem("additional_document_references[+].id"),
+                # Internal Vendor Number
+            ),
+        ],
+    },
+)
+
+
+# =============================================================================
+# 850 Qualified Mappings - N9 Segments (Additional References)
+# =============================================================================
+
+
+_N9_QUALIFIED_MAPPINGS = QualifiedMapping(
+    qualifier_path=seg("N9", 1),
+    mappings={
+        "LI": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Line Item Reference Number
+            ),
+        ],
+        "DO": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Delivery Order Number
+            ),
+        ],
+        "CR": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Customer Reference Number
+            ),
+        ],
+        "PD": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Promotion/Deal Number
+            ),
+        ],
+        "AH": [
+            FieldMapping(
+                seg("N9", 2),
+                sem("additional_document_references[+].id"),
+                # Agreement Number
+            ),
+        ],
     },
 )
 
@@ -298,21 +386,47 @@ _PO1_LOOP_MAPPING = LoopMapping(
             sem("price.price_amount.value"),
             to_semantic_transform=PARSE_DECIMAL,
         ),
-        # PO1*05 = Basis of Unit Price (not commonly used)
-        # PO1*06-25 = Product ID qualifier/value pairs (handled separately)
-        # For now, map the most common first pair
+        # PO1*05 = Basis of Unit Price Code
         FieldMapping(
-            seg("PO1", 7),
-            sem("item.sellers_item_identification.id.value"),
-            # This is simplistic - real implementation needs to check qualifier
+            seg("PO1", 5),
+            sem("price.base_quantity_unit_code"),
         ),
+        # PO1*06-25 = Product ID qualifier/value pairs
+        # These are handled by MappingEngine._extract_po1_product_ids()
         # PID segment - Product Description
         FieldMapping(
             seg("PID", 5),
             sem("item.description"),
         ),
-        # Line-level SAC (allowances/charges)
-        # These require special handling for the loop
+        # PID*04 = Additional item property name
+        FieldMapping(
+            seg("PID", 4),
+            sem("item.additional_item_properties[0].name"),
+        ),
+        # CTP segment - Pricing Information
+        FieldMapping(
+            seg("CTP", 2),
+            sem("price.price_type_code"),
+            # Price type: WS=Wholesale, RS=Retail, CT=Contract, etc.
+        ),
+        FieldMapping(
+            seg("CTP", 3),
+            sem("price.price_amount.value"),
+            to_semantic_transform=PARSE_DECIMAL,
+            # Alternate unit price
+        ),
+        # REF segment within PO1 loop - line-level references
+        FieldMapping(
+            seg("REF", 2, qualifier=(1, "LI")),
+            sem("document_references[0].id"),
+            # Line Item Reference
+        ),
+        # MSG segment within PO1 loop - line-level notes
+        FieldMapping(
+            seg("MSG", 1),
+            sem("note[0]"),
+        ),
+        # Line-level SAC, SCH handled by MappingEngine
     ],
     qualified_mappings=[
         # Line-level DTM
@@ -326,9 +440,31 @@ _PO1_LOOP_MAPPING = LoopMapping(
                         to_semantic_transform=PARSE_DATE,
                     ),
                 ],
+                "010": [
+                    FieldMapping(
+                        seg("DTM", 2),
+                        sem("delivery[0].despatch.requested_despatch_date"),
+                        to_semantic_transform=PARSE_DATE,
+                    ),
+                ],
+                "038": [
+                    FieldMapping(
+                        seg("DTM", 2),
+                        sem("delivery[0].latest_delivery_date"),
+                        to_semantic_transform=PARSE_DATE,
+                    ),
+                ],
+                "063": [
+                    FieldMapping(
+                        seg("DTM", 2),
+                        sem("delivery[0].latest_delivery_date"),
+                        to_semantic_transform=PARSE_DATE,
+                    ),
+                ],
             },
         ),
     ],
+    # Note: Line-level SAC and SCH handled by MappingEngine
 )
 
 
@@ -342,10 +478,11 @@ ORDER_850_MAPPING = TransactionMapping(
     semantic_type=Order,
     # Header-level field mappings
     field_mappings=_HEADER_FIELD_MAPPINGS,
-    # Qualified mappings (DTM, REF with qualifiers)
+    # Qualified mappings (DTM, REF, N9 with qualifiers)
     qualified_mappings=[
         _DTM_QUALIFIED_MAPPINGS,
         _REF_QUALIFIED_MAPPINGS,
+        _N9_QUALIFIED_MAPPINGS,
     ],
     # Loop mappings (PO1 line items)
     loop_mappings=[

@@ -325,8 +325,10 @@ def _create_intermediate(obj: Any, attr_name: str) -> bool:
     # to determine what class to instantiate
     try:
         # For Pydantic models, try to get the field type
-        if hasattr(obj, "model_fields"):
-            field_info = obj.model_fields.get(attr_name)
+        # Access model_fields from the class, not the instance
+        obj_class = type(obj)
+        if hasattr(obj_class, "model_fields"):
+            field_info = obj_class.model_fields.get(attr_name)
             if field_info and field_info.annotation:
                 annotation = field_info.annotation
 
@@ -535,6 +537,14 @@ class MappingEngine:
                     metrics,
                     trace,
                 )
+
+            # Phase 5.5: Map SAC (Allowance/Charge) segments at header level
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_sac_segments(model, content, metrics, trace)
+
+            # Phase 5.6: Map TXI (Tax) segments at header level
+            if self.mapping.transaction_id in ("850", "810"):
+                self._map_txi_segments(model, content, metrics, trace)
 
             # Phase 6: Map party loops (N1)
             for party_mapping in self.mapping.party_mappings:
@@ -1060,6 +1070,7 @@ class MappingEngine:
         # - Direct: "buyer_customer_party" -> CustomerParty
         # - Nested: "buyer_customer_party.party" -> Party
         # - List append: "delivery[+].delivery_party" -> append Delivery with party
+        # - Indexed: "delivery[0].despatch.despatch_party" -> specific location
 
         path_str = target_path.path
 
@@ -1091,6 +1102,11 @@ class MappingEngine:
                 else:
                     # Map party to the item itself
                     self._populate_party_fields(new_item, loop, party_mapping, accumulator, metrics, trace)
+        elif "[0]" in path_str:
+            # Handle indexed list access like "delivery[0].despatch.despatch_party"
+            self._map_party_to_indexed_path(
+                model, loop, path_str, party_mapping, accumulator, metrics, trace
+            )
         else:
             # Direct path like "buyer_customer_party" or "accounting_customer_party"
             # Create the party wrapper if needed
@@ -1118,6 +1134,76 @@ class MappingEngine:
             # Populate the party
             self._populate_party_fields(existing, loop, party_mapping, accumulator, metrics, trace)
 
+    def _map_party_to_indexed_path(
+        self,
+        model: Any,
+        loop: "LoopInstance",
+        path_str: str,
+        party_mapping: PartyLoopMapping,
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics | None,
+        trace: MappingTrace | None,
+    ) -> None:
+        """Map party to an indexed path like 'delivery[0].despatch.despatch_party'."""
+        from edi_schema.semantic.models import Delivery, Despatch, Party
+
+        # Parse the path: delivery[0].despatch.despatch_party
+        import re
+
+        match = re.match(r"(\w+)\[(\d+)\]\.(.+)", path_str)
+        if not match:
+            if metrics:
+                metrics.fields_skipped += 1
+            return
+
+        list_name, index_str, rest_path = match.groups()
+        index = int(index_str)
+
+        # Get the list
+        list_obj = get_nested_attr(model, list_name)
+        if not isinstance(list_obj, list):
+            if metrics:
+                metrics.fields_skipped += 1
+            return
+
+        # Ensure the list has enough items
+        while len(list_obj) <= index:
+            if list_name == "delivery":
+                list_obj.append(Delivery())
+            else:
+                # Unknown list type
+                if metrics:
+                    metrics.fields_skipped += 1
+                return
+
+        target_obj = list_obj[index]
+
+        # Now navigate the rest of the path and set the party
+        # e.g., "despatch.despatch_party"
+        path_parts = rest_path.split(".")
+        current = target_obj
+
+        for i, part in enumerate(path_parts[:-1]):
+            next_obj = getattr(current, part, None)
+            if next_obj is None:
+                # Create intermediate objects
+                if part == "despatch":
+                    next_obj = Despatch()
+                    setattr(current, part, next_obj)
+                else:
+                    if metrics:
+                        metrics.fields_skipped += 1
+                    return
+            current = next_obj
+
+        # Create and populate the party
+        party = Party()
+        self._populate_party_fields(party, loop, party_mapping, accumulator, metrics, trace)
+
+        # Set the party at the final location
+        final_attr = path_parts[-1]
+        setattr(current, final_attr, party)
+
     def _populate_party(
         self,
         obj: Any,
@@ -1129,7 +1215,7 @@ class MappingEngine:
         trace: MappingTrace | None,
     ) -> None:
         """Populate party at a nested path."""
-        from edi_schema.semantic.models import Party
+        from edi_schema.semantic.models import Despatch, Party
 
         party = Party()
         self._populate_party_fields(party, loop, party_mapping, accumulator, metrics, trace)
@@ -1139,6 +1225,26 @@ class MappingEngine:
             # Also set delivery_location from postal_address
             if party.postal_address:
                 set_nested_attr(obj, "delivery_location", party.postal_address)
+        elif rest_path.endswith("despatch_party"):
+            # Handle nested paths like "despatch.despatch_party"
+            if "." in rest_path:
+                parts = rest_path.split(".")
+                current = obj
+                for part in parts[:-1]:
+                    next_obj = getattr(current, part, None)
+                    if next_obj is None:
+                        if part == "despatch":
+                            next_obj = Despatch()
+                            setattr(current, part, next_obj)
+                        else:
+                            return
+                    current = next_obj
+                setattr(current, parts[-1], party)
+            else:
+                set_nested_attr(obj, rest_path, party)
+        else:
+            # Generic case: just set the path
+            set_nested_attr(obj, rest_path, party)
 
     def _populate_party_fields(
         self,
@@ -1577,6 +1683,347 @@ class MappingEngine:
                 metrics,
                 trace,
             )
+
+        # Handle PO1 product ID pairs (elements 06-25)
+        if loop_mapping.loop_id == "PO1":
+            self._extract_po1_product_ids(item, loop, metrics, trace)
+            # Handle line-level SAC segments
+            self._extract_line_sac_segments(item, loop, metrics, trace)
+            # Handle SCH (delivery schedule) segments
+            self._extract_sch_segments(item, loop, metrics, trace)
+
+    def _extract_line_sac_segments(
+        self,
+        item: Any,
+        loop: "LoopInstance",
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Extract line-level SAC (allowance/charge) segments."""
+        from decimal import Decimal
+        from edi_schema.semantic.models import AllowanceCharge
+        from edi_schema.semantic.models.primitives import Amount
+
+        for seg in loop.segments:
+            if seg.tag != "SAC":
+                continue
+
+            # SAC*01 = Allowance/Charge Indicator
+            indicator = _get_element_value(seg, 1)
+            if indicator not in ("A", "C"):
+                continue
+
+            # SAC*02 = Code
+            code = _get_element_value(seg, 2)
+
+            # SAC*05 = Amount
+            amount_str = _get_element_value(seg, 5)
+            if not amount_str:
+                continue
+
+            try:
+                amount_value = Decimal(amount_str)
+            except Exception:
+                continue
+
+            # SAC*12 = Description
+            description = _get_element_value(seg, 12)
+
+            # SAC*15 = Percent
+            percent_str = _get_element_value(seg, 15)
+            percent = None
+            if percent_str:
+                try:
+                    percent = Decimal(percent_str)
+                except Exception:
+                    pass
+
+            charge = AllowanceCharge(
+                charge_indicator=(indicator == "C"),
+                allowance_charge_reason_code=code,
+                allowance_charge_reason=description,
+                amount=Amount(value=amount_value, currency="USD"),
+                multiplier_factor_numeric=percent,
+            )
+
+            if hasattr(item, "allowance_charges"):
+                item.allowance_charges.append(charge)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("SAC (line)", "allowance_charges[+]", str(charge))
+
+    def _extract_sch_segments(
+        self,
+        item: Any,
+        loop: "LoopInstance",
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Extract SCH (delivery schedule) segments for line items."""
+        from decimal import Decimal
+        from edi_schema.semantic.models import Delivery
+        from edi_schema.semantic.models.primitives import Period, Quantity
+
+        for seg in loop.segments:
+            if seg.tag != "SCH":
+                continue
+
+            # SCH*01 = Quantity
+            qty_str = _get_element_value(seg, 1)
+            if not qty_str:
+                continue
+
+            try:
+                qty_value = Decimal(qty_str)
+            except Exception:
+                continue
+
+            # SCH*02 = Unit of measure
+            uom = _get_element_value(seg, 2) or "EA"
+
+            # SCH*05 = Date/Time Qualifier
+            # SCH*06 = Date
+            date_qual = _get_element_value(seg, 5)
+            date_str = _get_element_value(seg, 6)
+
+            delivery = Delivery(
+                quantity=Quantity(value=qty_value, unit_code=uom),
+            )
+
+            if date_str and len(date_str) >= 8:
+                from datetime import date
+                try:
+                    parsed_date = date(
+                        int(date_str[0:4]),
+                        int(date_str[4:6]),
+                        int(date_str[6:8])
+                    )
+                    delivery.requested_delivery_period = Period(start_date=parsed_date)
+                except Exception:
+                    pass
+
+            if hasattr(item, "delivery"):
+                item.delivery.append(delivery)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("SCH", "delivery[+]", str(delivery))
+
+    def _extract_po1_product_ids(
+        self,
+        item: Any,
+        loop: "LoopInstance",
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Extract product ID pairs from PO1 elements 06-25."""
+        from edi_schema.semantic.models import Identifier, ItemIdentification
+
+        # Find the PO1 segment in the loop
+        po1_seg = None
+        for seg in loop.segments:
+            if seg.tag == "PO1":
+                po1_seg = seg
+                break
+
+        if po1_seg is None:
+            return
+
+        # Ensure item has an Item object
+        if not hasattr(item, "item") or item.item is None:
+            from edi_schema.semantic.models import Item
+            item.item = Item()
+
+        # Map product ID qualifier to (field_type, scheme_id)
+        qualifier_map = {
+            "UP": ("standard", "UPC"),
+            "EN": ("standard", "EAN"),
+            "UK": ("standard", "UCC/EAN-128"),
+            "UA": ("standard", "UPC-A"),
+            "UI": ("standard", "UPC-I"),
+            "VP": ("sellers", None),
+            "SK": ("sellers", None),
+            "VN": ("sellers", None),
+            "BP": ("buyers", None),
+            "IN": ("buyers", None),
+            "MG": ("manufacturers", None),
+            "MN": ("manufacturers", None),
+            "SN": ("additional", "Serial"),
+            "PN": ("additional", "PartNumber"),
+            "CB": ("additional", "BuyerCatalog"),
+            "CG": ("additional", "SellerCatalog"),
+            "EC": ("additional", "EngineeringChange"),
+            "PL": ("additional", "PurchaseOrder"),
+            "ZZ": ("additional", "MutuallyDefined"),
+        }
+
+        # Process pairs starting at element 6 (qualifier) and 7 (value)
+        for i in range(6, 26, 2):
+            qualifier = _get_element_value(po1_seg, i)
+            value = _get_element_value(po1_seg, i + 1)
+
+            if not qualifier or not value:
+                continue
+
+            field_type, scheme = qualifier_map.get(qualifier, ("additional", None))
+            item_id = ItemIdentification(id=Identifier(value=value, scheme_id=scheme or qualifier))
+
+            if field_type == "standard":
+                if item.item.standard_item_identification is None:
+                    item.item.standard_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "sellers":
+                if item.item.sellers_item_identification is None:
+                    item.item.sellers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "buyers":
+                if item.item.buyers_item_identification is None:
+                    item.item.buyers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "manufacturers":
+                if item.item.manufacturers_item_identification is None:
+                    item.item.manufacturers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            else:
+                item.item.additional_item_identifications.append(item_id)
+
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field(f"PO1*{i:02d}/*{i+1:02d}", f"item.{field_type}_item_identification", value)
+
+    def _map_sac_segments(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map SAC (Allowance/Charge) segments at header level."""
+        from decimal import Decimal
+        from edi_schema.semantic.models import AllowanceCharge
+        from edi_schema.semantic.models.primitives import Amount
+
+        sac_segments = find_all_segments(content, "SAC")
+
+        for sac_seg in sac_segments:
+            # SAC*01 = Allowance/Charge Indicator (A=Allowance, C=Charge)
+            indicator = _get_element_value(sac_seg, 1)
+            if indicator not in ("A", "C"):
+                continue
+
+            # SAC*02 = Service/Promotion/Allowance/Charge Code
+            code = _get_element_value(sac_seg, 2)
+
+            # SAC*05 = Amount
+            amount_str = _get_element_value(sac_seg, 5)
+            if not amount_str:
+                continue
+
+            try:
+                amount_value = Decimal(amount_str)
+            except Exception:
+                continue
+
+            # SAC*12 = Description
+            description = _get_element_value(sac_seg, 12)
+
+            # SAC*15 = Percent
+            percent_str = _get_element_value(sac_seg, 15)
+            percent = None
+            if percent_str:
+                try:
+                    percent = Decimal(percent_str)
+                except Exception:
+                    pass
+
+            # Create AllowanceCharge
+            charge = AllowanceCharge(
+                charge_indicator=(indicator == "C"),
+                allowance_charge_reason_code=code,
+                allowance_charge_reason=description,
+                amount=Amount(value=amount_value, currency="USD"),
+                multiplier_factor_numeric=percent,
+            )
+
+            # Add to model
+            if hasattr(model, "allowance_charges"):
+                model.allowance_charges.append(charge)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("SAC", "allowance_charges[+]", str(charge))
+
+    def _map_txi_segments(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map TXI (Tax) segments at header level."""
+        from decimal import Decimal
+        from edi_schema.semantic.models import TaxTotal, TaxSubtotal, TaxCategory
+        from edi_schema.semantic.models.primitives import Amount
+
+        txi_segments = find_all_segments(content, "TXI")
+
+        if not txi_segments:
+            return
+
+        # Accumulate tax amounts
+        total_tax = Decimal("0")
+        subtotals = []
+
+        for txi_seg in txi_segments:
+            # TXI*01 = Tax Type Code (e.g., ST=State, CT=County, CY=City)
+            tax_type = _get_element_value(txi_seg, 1)
+
+            # TXI*02 = Tax Amount
+            amount_str = _get_element_value(txi_seg, 2)
+            if amount_str:
+                try:
+                    amount = Decimal(amount_str)
+                    total_tax += amount
+
+                    # TXI*03 = Tax Percent
+                    percent_str = _get_element_value(txi_seg, 3)
+                    percent = None
+                    if percent_str:
+                        try:
+                            percent = Decimal(percent_str)
+                        except Exception:
+                            pass
+
+                    subtotal = TaxSubtotal(
+                        tax_amount=Amount(value=amount, currency="USD"),
+                        percent=percent,
+                        tax_category=TaxCategory(id=tax_type) if tax_type else None,
+                    )
+                    subtotals.append(subtotal)
+                except Exception:
+                    pass
+
+        if subtotals or total_tax > 0:
+            tax_total = TaxTotal(
+                tax_amount=Amount(value=total_tax, currency="USD"),
+                tax_subtotals=subtotals,
+            )
+
+            if hasattr(model, "tax_total"):
+                if isinstance(model.tax_total, list):
+                    model.tax_total.append(tax_total)
+                else:
+                    model.tax_total = [tax_total]
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("TXI", "tax_total[+]", str(tax_total))
 
     def _set_nested_value_with_construction(
         self,

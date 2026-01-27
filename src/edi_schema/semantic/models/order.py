@@ -322,6 +322,10 @@ class Order(SemanticModel):
         default=None,
         description="Accounting customer (bill-to)",
     )
+    payee_party: Party | None = Field(
+        default=None,
+        description="Payee party (remit-to)",
+    )
 
     # Delivery
     delivery: list[Delivery] = Field(
