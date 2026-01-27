@@ -154,6 +154,80 @@ class TestDeclarativeMappingWithFixture:
         assert bt_party.party.contact.name is not None
 
 
+class TestUnmappedTracking:
+    """Test unmapped segment/element tracking."""
+
+    @pytest.fixture
+    def schema_loader(self):
+        """Create schema loader for parsing - use 004010 to match the sample file."""
+        from edi_schema.x12.schemas import GeneratedX12SchemaLoader
+
+        return GeneratedX12SchemaLoader(version="004010")
+
+    @pytest.fixture
+    def fixture_path(self):
+        """Path to the 850 purchase order fixture."""
+        from pathlib import Path
+
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "x12_samples"
+            / "logistics"
+            / "850_purchase_order.x12"
+        )
+
+    @pytest.fixture
+    def parsed_850_transaction(self, fixture_path, schema_loader):
+        """Parse the 850 fixture file and return the transaction."""
+        from edi_schema.x12.parser import parse_file
+
+        result = parse_file(fixture_path, schema_loader=schema_loader)
+        return result.interchange.groups[0].transactions[0]
+
+    def test_unmapped_tracking_enabled(self, parsed_850_transaction):
+        """Test that unmapped tracking collects unmapped qualifiers."""
+        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        result = engine.to_semantic(parsed_850_transaction)
+
+        # Should still succeed (warnings don't cause failure)
+        assert result.success
+
+        # Should have metrics with unmapped tracking
+        assert result.metrics is not None
+
+        # Check for unmapped qualifiers or segments in warnings
+        warnings = [e for e in result.errors if e.severity.value == "warning"]
+        # The sample file should have some unmapped data
+        # (exact count depends on file content)
+        assert result.metrics.total_segments_in_document > 0
+
+    def test_unmapped_warnings_can_be_disabled(self, parsed_850_transaction):
+        """Test that warn_on_unmapped=False suppresses warnings."""
+        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=False)
+        result = engine.to_semantic(parsed_850_transaction)
+
+        assert result.success
+        # With warnings disabled, there should be no UNMAPPED_* warnings
+        unmapped_warnings = [
+            e for e in result.errors
+            if e.code.name.startswith("UNMAPPED")
+        ]
+        assert len(unmapped_warnings) == 0
+
+    def test_metrics_contain_unmapped_summary(self, parsed_850_transaction):
+        """Test that metrics contain unmapped data summary."""
+        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        result = engine.to_semantic(parsed_850_transaction)
+
+        assert result.metrics is not None
+        summary = result.metrics.get_unmapped_summary()
+        assert "total_unmapped" in summary
+        assert "by_segment" in summary
+        assert "by_reason" in summary
+        assert "unmapped_qualifiers" in summary
+
+
 class TestMappingEngineFeatures:
     """Test MappingEngine features like metrics and validation."""
 

@@ -20,6 +20,29 @@ logger = logging.getLogger("edi_schema.mapping")
 
 
 # =============================================================================
+# Unmapped Data Tracking
+# =============================================================================
+
+
+@dataclass
+class UnmappedData:
+    """Tracks a piece of data that was not mapped."""
+
+    segment_tag: str
+    qualifier: str | None = None
+    element_index: int | None = None
+    value: str | None = None
+    reason: str = "no_mapping"  # "unknown_qualifier", "no_mapping", "header_level", etc.
+
+    def __str__(self) -> str:
+        if self.qualifier:
+            return f"{self.segment_tag}*{self.qualifier}"
+        if self.element_index:
+            return f"{self.segment_tag}*{self.element_index:02d}"
+        return self.segment_tag
+
+
+# =============================================================================
 # Metrics Collection
 # =============================================================================
 
@@ -48,6 +71,12 @@ class MappingMetrics:
     errors_by_code: Counter = field(default_factory=Counter)
     errors_by_severity: Counter = field(default_factory=Counter)
 
+    # Unmapped data tracking
+    unmapped_segments: list[UnmappedData] = field(default_factory=list)
+    unmapped_qualifiers: dict[str, list[str]] = field(default_factory=dict)
+    total_segments_in_document: int = 0
+    segments_with_mappings: set[str] = field(default_factory=set)
+
     @property
     def total_time(self) -> float:
         """Total elapsed time."""
@@ -63,6 +92,47 @@ class MappingMetrics:
         """Record an error in metrics."""
         self.errors_by_code[error.code.name] += 1
         self.errors_by_severity[error.severity.name] += 1
+
+    def record_unmapped_segment(self, data: UnmappedData) -> None:
+        """Record an unmapped segment."""
+        self.unmapped_segments.append(data)
+
+    def record_unmapped_qualifier(self, segment: str, qualifier: str) -> None:
+        """Record an unmapped qualifier for a segment type."""
+        if segment not in self.unmapped_qualifiers:
+            self.unmapped_qualifiers[segment] = []
+        if qualifier not in self.unmapped_qualifiers[segment]:
+            self.unmapped_qualifiers[segment].append(qualifier)
+
+    def record_segment_mapped(self, segment_tag: str) -> None:
+        """Record that a segment type has mappings."""
+        self.segments_with_mappings.add(segment_tag)
+
+    @property
+    def unmapped_count(self) -> int:
+        """Total count of unmapped data items."""
+        return len(self.unmapped_segments)
+
+    @property
+    def unmapped_qualifier_count(self) -> int:
+        """Total count of unmapped qualifiers."""
+        return sum(len(qs) for qs in self.unmapped_qualifiers.values())
+
+    def get_unmapped_summary(self) -> dict[str, Any]:
+        """Get summary of unmapped data."""
+        by_segment: dict[str, int] = {}
+        by_reason: dict[str, int] = {}
+
+        for item in self.unmapped_segments:
+            by_segment[item.segment_tag] = by_segment.get(item.segment_tag, 0) + 1
+            by_reason[item.reason] = by_reason.get(item.reason, 0) + 1
+
+        return {
+            "total_unmapped": self.unmapped_count,
+            "by_segment": by_segment,
+            "by_reason": by_reason,
+            "unmapped_qualifiers": dict(self.unmapped_qualifiers),
+        }
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -81,6 +151,8 @@ class MappingMetrics:
             "mapping_success_rate": self.mapping_success_rate,
             "errors_by_code": dict(self.errors_by_code),
             "errors_by_severity": dict(self.errors_by_severity),
+            "unmapped_summary": self.get_unmapped_summary(),
+            "total_segments_in_document": self.total_segments_in_document,
         }
 
 

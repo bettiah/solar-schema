@@ -422,15 +422,243 @@ class MappingEngine:
         error_mode: ErrorHandlingMode = ErrorHandlingMode.LENIENT,
         collect_metrics: bool = True,
         debug_mode: bool = False,
+        warn_on_unmapped: bool = True,
     ) -> None:
         self.mapping = mapping
         self.error_mode = error_mode
         self.collect_metrics = collect_metrics
         self.debug_mode = debug_mode
+        self.warn_on_unmapped = warn_on_unmapped
         self.logger = MappingLogger()
 
         # Metrics collector
         self.aggregate_metrics = AggregateMetrics() if collect_metrics else None
+
+        # Compute which segments have mappings defined
+        self._mapped_segments = self._get_mapped_segments()
+        self._mapped_qualifiers = self._get_mapped_qualifiers()
+        self._mapped_elements = self._get_mapped_elements()
+
+    def _get_mapped_segments(self) -> set[str]:
+        """Get set of segment tags that have mappings defined."""
+        segments = set()
+        for fm in self.mapping.field_mappings:
+            if hasattr(fm.x12, 'segment'):
+                segments.add(fm.x12.segment)
+        for qm in self.mapping.qualified_mappings:
+            segments.add(qm.qualifier_path.segment)
+        for lm in self.mapping.loop_mappings:
+            segments.add(lm.loop_id)
+            for fm in lm.field_mappings:
+                if hasattr(fm.x12, 'segment'):
+                    segments.add(fm.x12.segment)
+        for pm in self.mapping.party_mappings:
+            segments.add(pm.loop_id)
+        return segments
+
+    def _get_mapped_qualifiers(self) -> dict[str, set[str]]:
+        """Get dict of segment -> set of mapped qualifiers."""
+        qualifiers: dict[str, set[str]] = {}
+        for qm in self.mapping.qualified_mappings:
+            seg = qm.qualifier_path.segment
+            if seg not in qualifiers:
+                qualifiers[seg] = set()
+            qualifiers[seg].update(qm.mappings.keys())
+        return qualifiers
+
+    def _get_mapped_elements(self) -> dict[str, set[int]]:
+        """Get dict of segment -> set of mapped element indices."""
+        elements: dict[str, set[int]] = {}
+        # From field mappings
+        for fm in self.mapping.field_mappings:
+            if hasattr(fm.x12, 'segment') and hasattr(fm.x12, 'element'):
+                seg = fm.x12.segment
+                if seg not in elements:
+                    elements[seg] = set()
+                elements[seg].add(fm.x12.element)
+        # From qualified mappings (the qualifier element)
+        for qm in self.mapping.qualified_mappings:
+            seg = qm.qualifier_path.segment
+            if seg not in elements:
+                elements[seg] = set()
+            elements[seg].add(qm.qualifier_path.element)
+            # Also the mapped elements from each qualifier's mappings
+            for mapping in qm.mappings.values():
+                for fm in mapping:
+                    if hasattr(fm.x12, 'segment') and fm.x12.segment == seg:
+                        elements[seg].add(fm.x12.element)
+        # From loop mappings
+        for lm in self.mapping.loop_mappings:
+            for fm in lm.field_mappings:
+                if hasattr(fm.x12, 'segment') and hasattr(fm.x12, 'element'):
+                    seg = fm.x12.segment
+                    if seg not in elements:
+                        elements[seg] = set()
+                    elements[seg].add(fm.x12.element)
+        return elements
+
+    def _collect_segment_tags(
+        self,
+        content: list["ParsedSegment | LoopInstance"],
+    ) -> dict[str, int]:
+        """Collect counts of all segment tags in the document."""
+        counts: dict[str, int] = {}
+
+        def collect(items: list) -> None:
+            for item in items:
+                if hasattr(item, "tag"):
+                    tag = item.tag
+                    counts[tag] = counts.get(tag, 0) + 1
+                if hasattr(item, "segments"):
+                    # It's a loop - collect from its segments
+                    collect(item.segments)
+                if hasattr(item, "nested_loops"):
+                    for nested in item.nested_loops:
+                        collect([nested])
+
+        collect(content)
+        return counts
+
+    def _report_unmapped_segments(
+        self,
+        all_segment_tags: dict[str, int],
+        content: list["ParsedSegment | LoopInstance"],
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics,
+    ) -> None:
+        """Report segments that have no mapping defined."""
+        from .diagnostics import UnmappedData
+
+        # Segments that have explicit mappings or are handled specially
+        handled_segments = self._mapped_segments | {
+            "ST", "SE",  # Transaction envelope
+        }
+        # N2, N3, N4, PER are only handled WITHIN N1 loops, not at header level
+
+        # Also include segments from loops that have mappings
+        for lm in self.mapping.loop_mappings:
+            for fm in lm.field_mappings:
+                if hasattr(fm.x12, 'segment'):
+                    handled_segments.add(fm.x12.segment)
+            for qm in lm.qualified_mappings:
+                handled_segments.add(qm.qualifier_path.segment)
+
+        # First pass: report unmapped segment TYPES (like TD5, N9, etc.)
+        for tag, count in all_segment_tags.items():
+            if tag not in handled_segments and tag not in {"N2", "N3", "N4", "PER"}:
+                # Get sample values from the first occurrence
+                for item in content:
+                    if hasattr(item, "tag") and item.tag == tag:
+                        element_values = []
+                        for i in range(1, 10):
+                            val = _get_element_value(item, i)
+                            if val:
+                                element_values.append(val)
+                            else:
+                                break
+
+                        metrics.record_unmapped_segment(UnmappedData(
+                            segment_tag=tag,
+                            qualifier=element_values[0] if element_values else None,
+                            value="*".join(element_values) if element_values else None,
+                            reason="no_mapping",
+                        ))
+
+                        accumulator.add_warning(
+                            MappingErrorCode.UNMAPPED_SEGMENT,
+                            f"No mapping defined for segment {tag} ({count} occurrence(s))",
+                            source_path=tag,
+                        )
+                        break  # Only report once per segment type
+
+        # Second pass: check for header-level PER/N2/N3/N4 segments
+        # These are only handled within N1 loops, so header-level ones are unmapped
+        header_level_party_segments = {"PER", "N2", "N3", "N4"}
+        for item in content:
+            # Only check direct children of content (not inside loops)
+            if hasattr(item, "tag") and item.tag in header_level_party_segments:
+                element_values = []
+                for i in range(1, 10):
+                    val = _get_element_value(item, i)
+                    if val:
+                        element_values.append(val)
+                    else:
+                        break
+
+                metrics.record_unmapped_segment(UnmappedData(
+                    segment_tag=item.tag,
+                    qualifier=element_values[0] if element_values else None,
+                    value="*".join(element_values) if element_values else None,
+                    reason="header_level",
+                ))
+
+                accumulator.add_warning(
+                    MappingErrorCode.UNMAPPED_SEGMENT,
+                    f"Header-level {item.tag} segment not mapped (only handled within N1 loops)",
+                    source_path=f"{item.tag}*{element_values[0]}" if element_values else item.tag,
+                )
+
+        # Third pass: check for unmapped elements within mapped segments
+        self._report_unmapped_elements(content, accumulator, metrics)
+
+    def _report_unmapped_elements(
+        self,
+        content: list["ParsedSegment | LoopInstance"],
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics,
+    ) -> None:
+        """Report elements within mapped segments that have values but no mapping."""
+        from .diagnostics import UnmappedData
+
+        reported: set[tuple[str, int]] = set()  # Track (segment, element) pairs reported
+
+        def check_segment(segment: "ParsedSegment") -> None:
+            tag = segment.tag
+            if tag not in self._mapped_elements:
+                return  # Segment itself is unmapped, already reported
+
+            mapped_elements = self._mapped_elements[tag]
+
+            # Check each element in the segment
+            for i in range(1, 26):  # X12 elements typically up to 25
+                val = _get_element_value(segment, i)
+                if val is None or (isinstance(val, str) and not val.strip()):
+                    continue  # No value or empty string
+                if i in mapped_elements:
+                    continue  # Element is mapped
+
+                key = (tag, i)
+                if key in reported:
+                    continue  # Already reported this element for this segment type
+                reported.add(key)
+
+                metrics.record_unmapped_segment(UnmappedData(
+                    segment_tag=tag,
+                    element_index=i,
+                    value=val,
+                    reason="unmapped_element",
+                ))
+
+                accumulator.add_warning(
+                    MappingErrorCode.UNMAPPED_ELEMENT,
+                    f"Element {tag}*{i:02d} has value but no mapping: {val!r}",
+                    source_path=f"{tag}*{i:02d}",
+                    value=val,
+                )
+
+        def check_content(items: list) -> None:
+            from edi_schema.x12.ast import ParsedSegment, RawSegment
+
+            for item in items:
+                if isinstance(item, (ParsedSegment, RawSegment)):
+                    check_segment(item)
+                if hasattr(item, "segments"):
+                    check_content(item.segments)
+                if hasattr(item, "nested_loops"):
+                    for nested in item.nested_loops:
+                        check_content([nested])
+
+        check_content(content)
 
     def to_semantic(
         self,
@@ -472,6 +700,11 @@ class MappingEngine:
                 )
 
             content = transaction.content
+
+            # Collect all segments in the document for unmapped tracking
+            all_segment_tags = self._collect_segment_tags(content)
+            if metrics:
+                metrics.total_segments_in_document = sum(all_segment_tags.values())
 
             # Phase 1: Extract required fields first to build base model
             model_data: dict[str, Any] = {}
@@ -590,6 +823,15 @@ class MappingEngine:
                         )
                 if metrics:
                     metrics.validation_time = time.perf_counter() - validation_start
+
+            # Phase 9: Report unmapped segments
+            if self.warn_on_unmapped and metrics:
+                self._report_unmapped_segments(
+                    all_segment_tags,
+                    content,
+                    accumulator,
+                    metrics,
+                )
 
             # Build result
             all_errors = accumulator.errors + validation_errors
@@ -955,6 +1197,30 @@ class MappingEngine:
 
             # Check if we have mappings for this qualifier
             if qualifier_value not in qualified_mapping.mappings:
+                # Track and warn about unmapped qualifier
+                if metrics:
+                    metrics.record_unmapped_qualifier(qualifier_path.segment, qualifier_value)
+                    # Get all element values for context
+                    element_values = []
+                    for i in range(1, 10):
+                        val = _get_element_value(segment, i)
+                        if val:
+                            element_values.append(val)
+                        else:
+                            break
+                    from .diagnostics import UnmappedData
+                    metrics.record_unmapped_segment(UnmappedData(
+                        segment_tag=qualifier_path.segment,
+                        qualifier=qualifier_value,
+                        value="*".join(element_values) if element_values else None,
+                        reason="unknown_qualifier",
+                    ))
+                if self.warn_on_unmapped:
+                    accumulator.add_warning(
+                        MappingErrorCode.UNMAPPED_QUALIFIER,
+                        f"No mapping for {qualifier_path.segment}*{qualifier_value}",
+                        source_path=f"{qualifier_path.segment}*{qualifier_value}",
+                    )
                 continue
 
             # Apply the mappings for this qualifier

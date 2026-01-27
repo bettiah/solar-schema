@@ -154,35 +154,59 @@ class MappingResult:
 
 ## Implementation Tasks
 
-- [ ] Add `UnmappedData` dataclass to types.py
-- [ ] Add unmapped tracking fields to `MappingMetrics`
-- [ ] Add `MappingErrorCode.UNMAPPED_QUALIFIER` and `UNMAPPED_SEGMENT`
-- [ ] Update `_map_qualified_segments` to track/warn on unknown qualifiers
-- [ ] Add `_collect_all_segments` method
-- [ ] Add `_report_unmapped_segments` method
-- [ ] Add `warn_on_unmapped` and `strict_mode` options
-- [ ] Add header-level segment tracking (PER, etc.)
-- [ ] Add unmapped element tracking within segments
-- [ ] Add `get_unmapped_report()` to MappingResult
-- [ ] Add tests for unmapped tracking
-- [ ] Update documentation
+- [x] Add `UnmappedData` dataclass to diagnostics.py
+- [x] Add unmapped tracking fields to `MappingMetrics`
+- [x] Add `MappingErrorCode.UNMAPPED_QUALIFIER`, `UNMAPPED_SEGMENT`, `UNMAPPED_ELEMENT`
+- [x] Update `_map_qualified_segments` to track/warn on unknown qualifiers
+- [x] Add `_collect_segment_tags` method
+- [x] Add `_report_unmapped_segments` method
+- [x] Add `_report_unmapped_elements` method
+- [x] Add `warn_on_unmapped` option
+- [x] Add header-level segment tracking (PER, etc.)
+- [x] Add unmapped element tracking within segments
+- [x] Add tests for unmapped tracking
+- [ ] Add `get_unmapped_report()` to MappingResult (optional)
+- [ ] Add `strict_mode` option (optional)
+- [ ] Update documentation (optional)
 
 ---
 
 ## Success Criteria
 
-1. Running the mapper on `850_purchase_order.x12` should report:
-   - `REF*8M` as unmapped qualifier
-   - Header-level `PER*OC` as unmapped segment
-   - `FOB*02` and `FOB*03` as unmapped elements
+1. ✅ Running the mapper on `850_purchase_order.x12` reports:
+   - ✅ `REF*8M` as unmapped qualifier
+   - ✅ Header-level `PER*OC` as unmapped segment
+   - ✅ `FOB*02` and `FOB*03` as unmapped elements
 
-2. Metrics should show:
-   - Total segments in document
-   - Segments mapped
-   - Segments unmapped (with reasons)
-   - Qualifiers not recognized
+2. ✅ Metrics show:
+   - ✅ Total segments in document
+   - ✅ Segments mapped
+   - ✅ Segments unmapped (with reasons: unknown_qualifier, header_level, unmapped_element)
+   - ✅ Qualifiers not recognized
 
-3. Optional strict mode should fail the mapping if any data is unmapped.
+3. [ ] Optional strict mode should fail the mapping if any data is unmapped (not yet implemented)
+
+## Verification Output
+
+```
+=== Unmapped Summary ===
+Total unmapped: 10
+By segment: {'REF': 2, 'PER': 1, 'CUR': 1, 'FOB': 2, 'PO1': 2, 'CTT': 1, 'AMT': 1}
+By reason: {'unknown_qualifier': 1, 'header_level': 1, 'unmapped_element': 8}
+Unmapped qualifiers: {'REF': ['8M']}
+
+=== Warnings ===
+  UNMAPPED_QUALIFIER: No mapping for REF*8M
+  UNMAPPED_SEGMENT: Header-level PER segment not mapped (only handled within N1 loops)
+  UNMAPPED_ELEMENT: Element CUR*01 has value but no mapping: 'SN'
+  UNMAPPED_ELEMENT: Element REF*03 has value but no mapping: 'ORIGIN'
+  UNMAPPED_ELEMENT: Element FOB*02 has value but no mapping: 'ZZ'
+  UNMAPPED_ELEMENT: Element FOB*03 has value but no mapping: 'UPS Ground #442E1W'
+  UNMAPPED_ELEMENT: Element PO1*06 has value but no mapping: 'VP'
+  UNMAPPED_ELEMENT: Element PO1*07 has value but no mapping: '32230538'
+  UNMAPPED_ELEMENT: Element CTT*02 has value but no mapping: '1'
+  UNMAPPED_ELEMENT: Element AMT*01 has value but no mapping: 'TT'
+```
 
 ---
 

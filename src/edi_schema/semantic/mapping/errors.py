@@ -43,6 +43,11 @@ class MappingErrorCode(Enum):
     CONSTRAINT_VIOLATED = "constraint_violated"
     CROSS_FIELD_VALIDATION_FAILED = "cross_field_validation_failed"
 
+    # Unmapped data warnings
+    UNMAPPED_SEGMENT = "unmapped_segment"
+    UNMAPPED_QUALIFIER = "unmapped_qualifier"
+    UNMAPPED_ELEMENT = "unmapped_element"
+
     # General
     UNKNOWN_ERROR = "unknown_error"
 
