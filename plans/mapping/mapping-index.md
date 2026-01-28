@@ -195,7 +195,7 @@ X12 uses ANSI codes; semantic models use UN/ECE Rec 20. Most codes are identical
 ## Related Documentation
 
 - [X12 Parser](../src/edi_schema/x12/parser.py)
-- [Mapping Engine](../src/edi_schema/semantic/mapping/engine.py)
+- [Mapping Engine](../../src/edi_schema/semantic/mapping/engine.py)
 - [Semantic Models](../src/edi_schema/semantic/models/)
-- [X12 Plan](x12_plan.md)
-- [UBL Plan](ubl_plan.md)
+- [X12 Plan](../x12_plan.md)
+- [UBL Plan](../ubl_plan.md)
