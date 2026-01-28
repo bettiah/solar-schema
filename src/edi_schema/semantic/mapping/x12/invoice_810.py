@@ -103,13 +103,8 @@ _HEADER_FIELD_MAPPINGS = [
         sem("payment_terms[0].note"),
     ),
 
-    # CTT segment - Transaction Totals
-    FieldMapping(
-        seg("CTT", 1),
-        sem("line_count"),
-        to_semantic_transform=TO_INT,
-    ),
-    # CTT*02 = Hash Total - validation only, not mapped
+    # CTT segment - Transaction Totals (X12 control segment, not mapped to semantic model)
+    # CTT*01 = Line Count, CTT*02 = Hash Total - validation only
 
     # TDS segment - Total Monetary Value Summary
     # Handled by MappingEngine._map_tds_totals() which converts cents to decimal

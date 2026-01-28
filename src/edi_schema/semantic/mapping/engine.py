@@ -664,10 +664,11 @@ class MappingEngine:
                 elements["NTE"] = set()
             elements["NTE"].update([1, 2])
 
-            # CTT*02 is hash total for validation only - intentionally not mapped
+            # CTT is X12 control segment for validation only - not mapped to semantic model
+            # CTT*01 = line count, CTT*02 = hash total
             if "CTT" not in elements:
                 elements["CTT"] = set()
-            elements["CTT"].add(2)
+            elements["CTT"].update([1, 2])
 
             # AMT*01 is the qualifier, AMT*02 is the value - both handled by _map_amt_totals
             if "AMT" not in elements:

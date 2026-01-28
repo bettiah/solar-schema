@@ -159,10 +159,12 @@ class TestDeclarativeMappingWithFixture:
         # The payment_terms list will be empty until this is enhanced.
         pass  # Skip - engine limitation
 
-    def test_invoice_has_line_count(self, mapped_invoice):
-        """Test that line count from CTT is mapped."""
-        # CTT*8 = 8 line items (note: fixture only has 1 shown)
-        assert mapped_invoice.line_count == 8
+    def test_invoice_line_count_not_mapped(self, mapped_invoice):
+        """Test that CTT line count is NOT mapped (X12 control segment only)."""
+        # CTT is an X12 control segment for validation, not a business field
+        # Use calculated_line_count property instead for actual line count
+        assert mapped_invoice.line_count is None
+        assert mapped_invoice.calculated_line_count == 1  # Fixture has 1 line
 
     def test_invoice_has_allowance_charge(self, mapped_invoice):
         """Test that SAC allowance/charge is mapped."""

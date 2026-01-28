@@ -123,7 +123,6 @@
     'document_purpose_code': '00',
     'id': '5907867',
     'issue_date': '2016-12-06',
-    'line_count': 1,
     'note': list([
       'If items are available for partial shipment, please contact companyA@trading.com for authorization prior to release',
     ]),
