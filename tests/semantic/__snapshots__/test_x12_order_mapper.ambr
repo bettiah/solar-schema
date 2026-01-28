@@ -42,6 +42,10 @@
       }),
     ]),
     'anticipated_monetary_total': dict({
+      'payable_amount': dict({
+        'currency': 'USD',
+        'value': '8.90',
+      }),
     }),
     'buyer_customer_party': dict({
       'buyer_contact': dict({
@@ -90,6 +94,9 @@
         'delivery_terms': dict({
           'loss_risk_responsibility_code': 'ZZ',
           'special_terms': 'UPS Ground #442E1W',
+        }),
+        'despatch': dict({
+          'requested_despatch_date': '2016-12-06',
         }),
         'shipment': dict({
           'carrier_party': dict({
@@ -144,6 +151,5 @@
       }),
     ]),
     'order_type_code': 'DS',
-    'sales_order_id': '',
   })
 # ---

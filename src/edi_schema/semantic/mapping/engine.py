@@ -173,14 +173,22 @@ def find_all_loops(
 
 
 def _get_element_value(segment: "ParsedSegment", index: int) -> str | None:
-    """Get element value from segment by 1-indexed position."""
+    """Get element value from segment by 1-indexed position.
+
+    Returns None for both missing elements AND empty strings.
+    """
+    value = None
     # RawSegment has get_element_value directly
     if hasattr(segment, "get_element_value"):
-        return segment.get_element_value(index)
+        value = segment.get_element_value(index)
     # ParsedSegment may have raw attribute
-    if hasattr(segment, "raw") and hasattr(segment.raw, "get_element_value"):
-        return segment.raw.get_element_value(index)
-    return None
+    elif hasattr(segment, "raw") and hasattr(segment.raw, "get_element_value"):
+        value = segment.raw.get_element_value(index)
+
+    # Treat empty strings as None (no value)
+    if value is not None and value.strip() == "":
+        return None
+    return value
 
 
 def _get_composite_component(
@@ -631,6 +639,33 @@ class MappingEngine:
                 elements["MSG"] = set()
             elements["MSG"].add(1)
 
+            # PO1*06-25 are product ID qualifier/value pairs handled by _extract_po1_product_ids
+            if "PO1" not in elements:
+                elements["PO1"] = set()
+            elements["PO1"].update(range(6, 26))
+
+            # CTT*02 is hash total for validation only - intentionally not mapped
+            if "CTT" not in elements:
+                elements["CTT"] = set()
+            elements["CTT"].add(2)
+
+            # AMT*01 is the qualifier, AMT*02 is the value - both handled by _map_amt_totals
+            if "AMT" not in elements:
+                elements["AMT"] = set()
+            elements["AMT"].update({1, 2})
+
+            # CUR*01 is entity identifier (e.g., "SN" = Selling Party) - qualifies currency
+            # Not mapped because document_currency_code (CUR*02) applies to whole document
+            if "CUR" not in elements:
+                elements["CUR"] = set()
+            elements["CUR"].add(1)
+
+            # REF*03 is reference description - would need special handling to link
+            # to the document reference created by REF*02. Lower priority enhancement.
+            if "REF" not in elements:
+                elements["REF"] = set()
+            elements["REF"].add(3)
+
         return elements
 
     def _collect_segment_tags(
@@ -671,7 +706,8 @@ class MappingEngine:
         }
         # Add segments handled by special handlers for 850/810/856
         if self.mapping.transaction_id in ("850", "810", "856"):
-            handled_segments |= {"TD5", "MSG"}  # Handled by _map_td5_to_shipment, _map_msg_notes
+            # TD5 -> _map_td5_to_shipment, MSG -> _map_msg_notes, AMT -> _map_amt_totals
+            handled_segments |= {"TD5", "MSG", "AMT"}
         # N2, N3, N4, PER are only handled WITHIN N1 loops, not at header level
 
         # Also include segments from loops that have mappings
@@ -947,6 +983,14 @@ class MappingEngine:
             # Phase 6.8: Map MSG notes to note list
             if self.mapping.transaction_id in ("850", "810", "856"):
                 self._map_msg_notes(model, content, metrics, trace)
+
+            # Phase 6.9: Map AMT totals (creates MonetaryTotal/Amount objects)
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_amt_totals(model, content, metrics, trace)
+
+            # Phase 6.10: Map DTM despatch dates (creates Despatch object)
+            if self.mapping.transaction_id in ("850", "810", "856"):
+                self._map_dtm_despatch(model, content, metrics, trace)
 
             # Phase 7: Map item loops (PO1, IT1, etc.)
             loop_start = time.perf_counter()
@@ -1364,6 +1408,12 @@ class MappingEngine:
 
             # Check if we have mappings for this qualifier
             if qualifier_value not in qualified_mapping.mappings:
+                # Skip qualifiers handled by special handlers (850/810/856)
+                if self.mapping.transaction_id in ("850", "810", "856"):
+                    # DTM*010, DTM*037 handled by _map_dtm_despatch
+                    if qualifier_path.segment == "DTM" and qualifier_value in ("010", "037"):
+                        continue
+
                 # Track and warn about unmapped qualifier
                 if metrics:
                     metrics.record_unmapped_qualifier(qualifier_path.segment, qualifier_value)
@@ -2757,6 +2807,124 @@ class MappingEngine:
                         find_msg_segments(item.segments)
 
         find_msg_segments(content)
+
+    def _map_amt_totals(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map AMT*TT to anticipated_monetary_total.payable_amount.
+
+        Creates MonetaryTotal and Amount objects as needed.
+        Searches both header level and inside CTT loop.
+        """
+        from decimal import Decimal
+
+        from edi_schema.semantic.models import Amount, MonetaryTotal
+
+        def process_amt(segment: Any) -> bool:
+            """Process an AMT segment. Returns True if mapped."""
+            qualifier = _get_element_value(segment, 1)
+            amount_str = _get_element_value(segment, 2)
+
+            if qualifier == "TT" and amount_str:
+                # Create MonetaryTotal with Amount for total transaction amount
+                if model.anticipated_monetary_total is None:
+                    model.anticipated_monetary_total = MonetaryTotal()
+
+                currency = getattr(model, "document_currency_code", None) or "USD"
+                model.anticipated_monetary_total.payable_amount = Amount(
+                    value=Decimal(amount_str),
+                    currency=currency,
+                )
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field(
+                        "AMT*TT*02",
+                        "anticipated_monetary_total.payable_amount",
+                        amount_str,
+                    )
+                return True
+            return False
+
+        for item in content:
+            if hasattr(item, "tag") and item.tag == "AMT":
+                if process_amt(item):
+                    return  # Found and mapped
+            # Also search inside CTT loop (where AMT often appears)
+            if hasattr(item, "loop_id") and item.loop_id == "CTT":
+                for seg in item.segments:
+                    if seg.tag == "AMT":
+                        if process_amt(seg):
+                            return  # Found and mapped
+
+    def _map_dtm_despatch(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map despatch-related DTM qualifiers to delivery[0].despatch.
+
+        Creates Despatch object if needed. Handles:
+        - DTM*010 = Ship Date -> requested_despatch_date
+        - DTM*037 = Ship Not Before -> earliest_despatch_date
+        """
+        from datetime import date as date_type
+
+        from edi_schema.semantic.models import Despatch
+
+        if not hasattr(model, "delivery") or not model.delivery:
+            return
+
+        delivery = model.delivery[0]
+
+        for item in content:
+            if not hasattr(item, "tag") or item.tag != "DTM":
+                continue
+
+            qualifier = _get_element_value(item, 1)
+            date_str = _get_element_value(item, 2)
+
+            if not date_str:
+                continue
+
+            # Determine which despatch field to set
+            field_name = None
+            if qualifier == "010":
+                field_name = "requested_despatch_date"
+            elif qualifier == "037":
+                field_name = "earliest_despatch_date"
+
+            if not field_name:
+                continue
+
+            # Create Despatch if needed
+            if delivery.despatch is None:
+                delivery.despatch = Despatch()
+
+            # Parse CCYYMMDD format
+            try:
+                parsed_date = date_type(
+                    year=int(date_str[0:4]),
+                    month=int(date_str[4:6]),
+                    day=int(date_str[6:8]),
+                )
+                setattr(delivery.despatch, field_name, parsed_date)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field(
+                        f"DTM*{qualifier}*02",
+                        f"delivery[0].despatch.{field_name}",
+                        str(parsed_date),
+                    )
+            except (ValueError, IndexError):
+                pass  # Invalid date format, skip
 
     def _set_nested_value_with_construction(
         self,

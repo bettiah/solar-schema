@@ -121,11 +121,7 @@ _HEADER_FIELD_MAPPINGS = [
         to_semantic_transform=TO_INT,
     ),
     # AMT segment - Monetary Amount (total)
-    FieldMapping(
-        seg("AMT", 2, qualifier=(1, "TT")),
-        sem("anticipated_monetary_total.payable_amount.value"),
-        to_semantic_transform=PARSE_DECIMAL,
-    ),
+    # Handled by MappingEngine._map_amt_totals() which creates MonetaryTotal/Amount objects
     # MSG segment - Notes
     # Handled by MappingEngine._map_msg_notes() which appends to the note list
 ]
@@ -147,20 +143,8 @@ _DTM_QUALIFIED_MAPPINGS = QualifiedMapping(
                 to_semantic_transform=PARSE_DATE,
             ),
         ],
-        "010": [
-            FieldMapping(
-                seg("DTM", 2),
-                sem("delivery[0].despatch.requested_despatch_date"),
-                to_semantic_transform=PARSE_DATE,
-            ),
-        ],
-        "037": [
-            FieldMapping(
-                seg("DTM", 2),
-                sem("delivery[0].despatch.earliest_despatch_date"),
-                to_semantic_transform=PARSE_DATE,
-            ),
-        ],
+        # DTM*010 (Ship Date) and DTM*037 (Ship Not Before) are handled by
+        # MappingEngine._map_dtm_despatch() which creates the Despatch object
         "038": [
             FieldMapping(
                 seg("DTM", 2),

@@ -28,17 +28,16 @@ class TestDeclarativeMappingWithFixture:
         from pathlib import Path
 
         return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "x12_samples"
-            / "logistics"
-            / "850_purchase_order.x12"
+                Path(__file__).parent.parent
+                / "fixtures"
+                / "x12_samples"
+                / "logistics"
+                / "850_purchase_order.x12"
         )
 
     @pytest.fixture
     def parsed_850_transaction(self, fixture_path, schema_loader):
         """Parse the 850 fixture file and return the transaction."""
-        from edi_schema.x12.ast import ErrorSeverity
         from edi_schema.x12.parser import parse_file
 
         result = parse_file(fixture_path, schema_loader=schema_loader)
@@ -193,11 +192,11 @@ class TestUnmappedTracking:
         from pathlib import Path
 
         return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "x12_samples"
-            / "logistics"
-            / "850_purchase_order.x12"
+                Path(__file__).parent.parent
+                / "fixtures"
+                / "x12_samples"
+                / "logistics"
+                / "850_purchase_order.x12"
         )
 
     @pytest.fixture
@@ -228,23 +227,24 @@ class TestUnmappedTracking:
         for w in result.warnings:
             warnings_by_code.setdefault(w.code, []).append(w.source_path)
 
-        # UNMAPPED_ELEMENT warnings for elements without mappings
+        # All elements in the fixture are now properly mapped or intentionally handled:
+        # - CUR*01: Entity identifier (qualifies currency) - intentionally not mapped
+        # - REF*03: Reference description - marked as handled (future enhancement)
+        # - PO1*06/07: Product ID pairs - handled by _extract_po1_product_ids
+        # - CTT*02: Hash total - validation only, intentionally not mapped
+        # - AMT*01/02: Amount qualifier/value - handled by _map_amt_totals
+        # - DTM*010: Ship date - handled by _map_dtm_despatch
         unmapped = warnings_by_code.get(MappingErrorCode.UNMAPPED_ELEMENT, [])
-        assert 'CUR*01' in unmapped  # Currency entity identifier
-        assert 'REF*03' in unmapped  # Reference description
-        assert 'PO1*06' in unmapped  # Product ID qualifier
-        assert 'PO1*07' in unmapped  # Product ID value
-        assert 'CTT*02' in unmapped  # Hash total
+        assert unmapped == [], f"Expected no unmapped elements, got {unmapped}"
 
-        # CANNOT_SET_FIELD warnings for failed mappings (path doesn't exist on model)
+        # All CANNOT_SET_FIELD issues are now resolved:
+        # - AMT*TT: _map_amt_totals creates MonetaryTotal/Amount objects
+        # - DTM*010: _map_dtm_despatch creates Despatch object
+        # - PO1*05: Empty string now treated as None (skipped)
         cannot_set = warnings_by_code.get(MappingErrorCode.CANNOT_SET_FIELD, [])
-        # Note: TD5 and MSG are now handled by special handlers that create intermediate objects
-        # AMT*TT mapping fails because anticipated_monetary_total.payable_amount is None
-        assert any('AMT' in p for p in cannot_set), f"Expected AMT warning, got {cannot_set}"
-        # DTM*010 mapping fails because delivery[0].despatch is None
-        assert any('DTM' in p for p in cannot_set), f"Expected DTM warning, got {cannot_set}"
+        assert cannot_set == [], f"Expected no failed mappings, got {cannot_set}"
 
-        # The sample file should have some unmapped data
+        # The sample file should have segment data
         assert result.metrics.total_segments_in_document > 0
 
     def test_unmapped_warnings_can_be_disabled(self, parsed_850_transaction):
