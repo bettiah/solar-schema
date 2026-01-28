@@ -49,8 +49,12 @@ class InvoiceLine(SemanticModel):
     )
 
     # Quantity and amounts
-    invoiced_quantity: Quantity = Field(description="Invoiced quantity")
-    line_extension_amount: Amount = Field(
+    invoiced_quantity: Quantity | None = Field(
+        default=None,
+        description="Invoiced quantity",
+    )
+    line_extension_amount: Amount | None = Field(
+        default=None,
         description="Line total (before tax)",
     )
     tax_point_date: date | None = Field(
@@ -321,10 +325,12 @@ class Invoice(SemanticModel):
     )
 
     # Parties
-    accounting_supplier_party: SupplierParty = Field(
+    accounting_supplier_party: SupplierParty | None = Field(
+        default=None,
         description="Seller/supplier party",
     )
-    accounting_customer_party: CustomerParty = Field(
+    accounting_customer_party: CustomerParty | None = Field(
+        default=None,
         description="Buyer/customer party",
     )
     payee_party: Party | None = Field(
@@ -381,7 +387,8 @@ class Invoice(SemanticModel):
     )
 
     # Totals
-    legal_monetary_total: MonetaryTotal = Field(
+    legal_monetary_total: MonetaryTotal | None = Field(
+        default=None,
         description="Invoice monetary totals",
     )
 

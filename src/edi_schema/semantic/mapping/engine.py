@@ -644,6 +644,26 @@ class MappingEngine:
                 elements["PO1"] = set()
             elements["PO1"].update(range(6, 26))
 
+            # IT1*06-25 are product ID qualifier/value pairs handled by _extract_it1_product_ids
+            if "IT1" not in elements:
+                elements["IT1"] = set()
+            elements["IT1"].update(range(6, 26))
+
+            # TDS amounts are handled by _map_tds_totals (converts cents)
+            if "TDS" not in elements:
+                elements["TDS"] = set()
+            elements["TDS"].update([1, 2, 3, 4])
+
+            # CAD carrier details handled by _map_cad_to_shipment
+            if "CAD" not in elements:
+                elements["CAD"] = set()
+            elements["CAD"].update([1, 4, 5, 7, 8, 9])
+
+            # NTE notes handled by _map_nte_notes
+            if "NTE" not in elements:
+                elements["NTE"] = set()
+            elements["NTE"].update([1, 2])
+
             # CTT*02 is hash total for validation only - intentionally not mapped
             if "CTT" not in elements:
                 elements["CTT"] = set()
@@ -991,6 +1011,18 @@ class MappingEngine:
             # Phase 6.10: Map DTM despatch dates (creates Despatch object)
             if self.mapping.transaction_id in ("850", "810", "856"):
                 self._map_dtm_despatch(model, content, metrics, trace)
+
+            # Phase 6.11: Map TDS totals (810-specific, cents conversion)
+            if self.mapping.transaction_id == "810":
+                self._map_tds_totals(model, content, metrics, trace)
+
+            # Phase 6.12: Map CAD carrier details (810-specific)
+            if self.mapping.transaction_id == "810":
+                self._map_cad_to_shipment(model, content, metrics, trace)
+
+            # Phase 6.13: Map NTE notes (810-specific header notes)
+            if self.mapping.transaction_id == "810":
+                self._map_nte_notes(model, content, metrics, trace)
 
             # Phase 7: Map item loops (PO1, IT1, etc.)
             loop_start = time.perf_counter()
@@ -2194,6 +2226,14 @@ class MappingEngine:
             # Handle SCH (delivery schedule) segments
             self._extract_sch_segments(item, loop, metrics, trace)
 
+        # Handle IT1 product ID pairs (elements 06-25) - similar to PO1
+        if loop_mapping.loop_id == "IT1":
+            self._extract_it1_product_ids(item, loop, metrics, trace)
+            # Handle line-level SAC segments
+            self._extract_line_sac_segments(item, loop, metrics, trace)
+            # Handle line-level TXI segments
+            self._extract_line_txi_segments(item, loop, metrics, trace)
+
     def _extract_line_sac_segments(
         self,
         item: Any,
@@ -2925,6 +2965,338 @@ class MappingEngine:
                     )
             except (ValueError, IndexError):
                 pass  # Invalid date format, skip
+
+    def _extract_it1_product_ids(
+        self,
+        item: Any,
+        loop: "LoopInstance",
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Extract product ID pairs from IT1 elements 06-25.
+
+        This is similar to _extract_po1_product_ids but for Invoice lines.
+        """
+        from edi_schema.semantic.models import Identifier, ItemIdentification
+
+        # Find the IT1 segment in the loop
+        it1_seg = None
+        for seg in loop.segments:
+            if seg.tag == "IT1":
+                it1_seg = seg
+                break
+
+        if it1_seg is None:
+            return
+
+        # Ensure item has an Item object
+        if not hasattr(item, "item") or item.item is None:
+            from edi_schema.semantic.models import Item
+            item.item = Item()
+
+        # Map product ID qualifier to (field_type, scheme_id)
+        qualifier_map = {
+            "UP": ("standard", "UPC"),
+            "EN": ("standard", "EAN"),
+            "UK": ("standard", "UCC/EAN-128"),
+            "UA": ("standard", "UPC-A"),
+            "UI": ("standard", "UPC-I"),
+            "VP": ("sellers", None),
+            "SK": ("sellers", None),
+            "VN": ("sellers", None),
+            "BP": ("buyers", None),
+            "IN": ("buyers", None),
+            "MG": ("manufacturers", None),
+            "MN": ("manufacturers", None),
+            "SN": ("additional", "Serial"),
+            "PN": ("additional", "PartNumber"),
+            "CB": ("additional", "BuyerCatalog"),
+            "CG": ("additional", "SellerCatalog"),
+            "EC": ("additional", "EngineeringChange"),
+            "PL": ("additional", "PurchaseOrder"),
+            "ZZ": ("additional", "MutuallyDefined"),
+        }
+
+        # Process pairs starting at element 6 (qualifier) and 7 (value)
+        for i in range(6, 26, 2):
+            qualifier = _get_element_value(it1_seg, i)
+            value = _get_element_value(it1_seg, i + 1)
+
+            if not qualifier or not value:
+                continue
+
+            field_type, scheme = qualifier_map.get(qualifier, ("additional", None))
+            item_id = ItemIdentification(id=Identifier(value=value, scheme_id=scheme or qualifier))
+
+            if field_type == "standard":
+                if item.item.standard_item_identification is None:
+                    item.item.standard_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "sellers":
+                if item.item.sellers_item_identification is None:
+                    item.item.sellers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "buyers":
+                if item.item.buyers_item_identification is None:
+                    item.item.buyers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            elif field_type == "manufacturers":
+                if item.item.manufacturers_item_identification is None:
+                    item.item.manufacturers_item_identification = item_id
+                else:
+                    item.item.additional_item_identifications.append(item_id)
+            else:
+                item.item.additional_item_identifications.append(item_id)
+
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field(f"IT1*{i:02d}/*{i+1:02d}", f"item.{field_type}_item_identification", value)
+
+    def _extract_line_txi_segments(
+        self,
+        item: Any,
+        loop: "LoopInstance",
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Extract line-level TXI (tax) segments for invoice lines."""
+        from decimal import Decimal
+        from edi_schema.semantic.models import TaxTotal, TaxSubtotal, TaxCategory
+        from edi_schema.semantic.models.primitives import Amount
+
+        total_tax = Decimal("0")
+        subtotals = []
+
+        for seg in loop.segments:
+            if seg.tag != "TXI":
+                continue
+
+            # TXI*01 = Tax Type Code
+            tax_type = _get_element_value(seg, 1)
+
+            # TXI*02 = Tax Amount
+            amount_str = _get_element_value(seg, 2)
+            if not amount_str:
+                continue
+
+            try:
+                amount = Decimal(amount_str)
+                total_tax += amount
+
+                # TXI*03 = Tax Percent
+                percent_str = _get_element_value(seg, 3)
+                percent = None
+                if percent_str:
+                    try:
+                        percent = Decimal(percent_str)
+                    except Exception:
+                        pass
+
+                subtotal = TaxSubtotal(
+                    tax_amount=Amount(value=amount, currency="USD"),
+                    percent=percent,
+                    tax_category=TaxCategory(id=tax_type) if tax_type else None,
+                )
+                subtotals.append(subtotal)
+            except Exception:
+                pass
+
+        if subtotals or total_tax > 0:
+            tax_total = TaxTotal(
+                tax_amount=Amount(value=total_tax, currency="USD"),
+                tax_subtotals=subtotals,
+            )
+            if hasattr(item, "tax_total"):
+                item.tax_total.append(tax_total)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("TXI", "tax_total[+]", str(tax_total))
+
+    def _map_tds_totals(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map TDS (Total Monetary Value Summary) to legal_monetary_total.
+
+        TDS amounts are in cents (2 implied decimal places), so we divide by 100.
+        Creates MonetaryTotal and Amount objects as needed.
+        """
+        from decimal import Decimal
+        from edi_schema.semantic.models import Amount, MonetaryTotal
+
+        tds_seg = find_segment(content, "TDS")
+        if tds_seg is None:
+            return
+
+        # TDS*01 = Total Invoice Amount (in cents)
+        total_str = _get_element_value(tds_seg, 1)
+        if not total_str:
+            return
+
+        try:
+            # Convert from cents to decimal
+            total_value = Decimal(total_str) / Decimal("100")
+        except Exception:
+            return
+
+        # Create MonetaryTotal if needed
+        if not hasattr(model, "legal_monetary_total") or model.legal_monetary_total is None:
+            model.legal_monetary_total = MonetaryTotal()
+
+        currency = getattr(model, "document_currency_code", None) or "USD"
+        model.legal_monetary_total.payable_amount = Amount(
+            value=total_value,
+            currency=currency,
+        )
+
+        if metrics:
+            metrics.fields_mapped += 1
+        if trace:
+            trace.add_field(
+                "TDS*01",
+                "legal_monetary_total.payable_amount",
+                str(total_value),
+            )
+
+        # TDS*02 = Amount Subject to Terms Discount (optional)
+        discount_str = _get_element_value(tds_seg, 2)
+        if discount_str:
+            try:
+                discount_value = Decimal(discount_str) / Decimal("100")
+                model.legal_monetary_total.allowance_total_amount = Amount(
+                    value=discount_value,
+                    currency=currency,
+                )
+                if metrics:
+                    metrics.fields_mapped += 1
+            except Exception:
+                pass
+
+    def _map_cad_to_shipment(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map CAD (Carrier Detail) to delivery[0].shipment.
+
+        Creates Shipment and Carrier objects as needed.
+        """
+        from edi_schema.semantic.models import (
+            Delivery,
+            Identifier,
+            Party,
+            PartyIdentification,
+            Shipment,
+            ShipmentStage,
+        )
+
+        cad_seg = find_segment(content, "CAD")
+        if cad_seg is None:
+            return
+
+        # Ensure delivery[0] exists
+        if not hasattr(model, "delivery") or not model.delivery:
+            model.delivery = [Delivery()]
+
+        delivery = model.delivery[0]
+
+        # Ensure shipment exists
+        if delivery.shipment is None:
+            delivery.shipment = Shipment()
+
+        shipment = delivery.shipment
+
+        # CAD*01 = Transport Method
+        transport_method = _get_element_value(cad_seg, 1)
+        if transport_method:
+            if not shipment.shipment_stages:
+                shipment.shipment_stages = [ShipmentStage()]
+            shipment.shipment_stages[0].transport_mode_code = transport_method
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("CAD*01", "delivery[0].shipment.shipment_stages[0].transport_mode_code", transport_method)
+
+        # CAD*04 = Standard Carrier Alpha Code (SCAC)
+        scac = _get_element_value(cad_seg, 4)
+        if scac:
+            if shipment.carrier_party is None:
+                shipment.carrier_party = Party()
+            if not shipment.carrier_party.party_identifications:
+                shipment.carrier_party.party_identifications = []
+            shipment.carrier_party.party_identifications.append(
+                PartyIdentification(id=Identifier(value=scac, scheme_id="SCAC"))
+            )
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("CAD*04", "delivery[0].shipment.carrier_party", scac)
+
+        # CAD*05 = Routing
+        routing = _get_element_value(cad_seg, 5)
+        if routing:
+            if not shipment.shipment_stages:
+                shipment.shipment_stages = [ShipmentStage()]
+            shipment.shipment_stages[0].transit_direction_code = routing
+            if metrics:
+                metrics.fields_mapped += 1
+
+        # CAD*08 = Reference ID (often Bill of Lading number)
+        ref_qual = _get_element_value(cad_seg, 7)
+        ref_id = _get_element_value(cad_seg, 8)
+        if ref_id and ref_qual == "BM":
+            # Bill of Lading - set as despatch document reference
+            from edi_schema.semantic.models.reference import DocumentReference
+            if not hasattr(model, "despatch_document_reference") or model.despatch_document_reference is None:
+                model.despatch_document_reference = DocumentReference(id=ref_id)
+            if metrics:
+                metrics.fields_mapped += 1
+            if trace:
+                trace.add_field("CAD*08", "despatch_document_reference.id", ref_id)
+
+        # CAD*09 = Service Level Code
+        service_level = _get_element_value(cad_seg, 9)
+        if service_level:
+            shipment.shipping_priority_level_code = service_level
+            if metrics:
+                metrics.fields_mapped += 1
+
+    def _map_nte_notes(
+        self,
+        model: Any,
+        content: list["ParsedSegment | LoopInstance"],
+        metrics: "MappingMetrics | None",
+        trace: "MappingTrace | None",
+    ) -> None:
+        """Map NTE (Note/Special Instruction) segments to note list.
+
+        NTE segments contain free-form notes at header level.
+        """
+        nte_segments = find_all_segments(content, "NTE")
+
+        for nte_seg in nte_segments:
+            # NTE*01 = Note Reference Code (optional qualifier)
+            # NTE*02 = Description (free-form text)
+            description = _get_element_value(nte_seg, 2)
+            if not description:
+                continue
+
+            if hasattr(model, "note"):
+                model.note.append(description)
+                if metrics:
+                    metrics.fields_mapped += 1
+                if trace:
+                    trace.add_field("NTE*02", "note[+]", description)
 
     def _set_nested_value_with_construction(
         self,

@@ -1,0 +1,91 @@
+# serializer version: 1
+# name: TestDeclarativeMappingWithFixture.test_mapped_invoice_snapshot
+  dict({
+    'accounting_customer_party': dict({
+      'buyer_contact': dict({
+        'electronic_mail': 'admin@domain.com',
+        'name': 'Customer',
+      }),
+      'party': dict({
+        'contact': dict({
+          'electronic_mail': 'admin@domain.com',
+          'name': 'Customer',
+        }),
+        'party_identifications': list([
+          dict({
+            'id': dict({
+              'scheme_id': 'BuyerAssigned',
+              'value': '123',
+            }),
+          }),
+        ]),
+        'party_names': list([
+          dict({
+            'name': 'CustomerA',
+          }),
+        ]),
+      }),
+    }),
+    'additional_document_references': list([
+      dict({
+        'id': '099',
+      }),
+      dict({
+        'id': '99999',
+      }),
+    ]),
+    'delivery': list([
+      dict({
+        'delivery_party': dict({
+          'party_identifications': list([
+            dict({
+              'id': dict({
+                'scheme_id': 'BuyerAssigned',
+                'value': '123',
+              }),
+            }),
+          ]),
+        }),
+        'shipment': dict({
+          'shipment_stages': list([
+            dict({
+              'transit_direction_code': 'GTCT',
+            }),
+          ]),
+        }),
+      }),
+    ]),
+    'despatch_document_reference': dict({
+      'id': '99999',
+    }),
+    'document_currency_code': 'USD',
+    'id': '217224',
+    'invoice_lines': list([
+      dict({
+        'id': '1',
+        'item': dict({
+          'standard_item_identification': dict({
+            'id': dict({
+              'scheme_id': 'UPC',
+              'value': '999999330023',
+            }),
+          }),
+        }),
+        'price': dict({
+          'price_amount': dict({
+            'currency': 'USD',
+            'value': '8.60',
+          }),
+        }),
+      }),
+    ]),
+    'issue_date': '2010-12-04',
+    'legal_monetary_total': dict({
+      'payable_amount': dict({
+        'currency': 'USD',
+        'value': '217.4',
+      }),
+    }),
+    'line_count': 8,
+  })
+# ---
