@@ -728,7 +728,12 @@ class MappingEngine:
         # Add segments handled by special handlers for 850/810/856
         if self.mapping.transaction_id in ("850", "810", "856"):
             # TD5 -> _map_td5_to_shipment, MSG -> _map_msg_notes, AMT -> _map_amt_totals
-            handled_segments |= {"TD5", "MSG", "AMT"}
+            # CTT is X12 control segment (intentionally not mapped to semantic model)
+            handled_segments |= {"TD5", "MSG", "AMT", "CTT"}
+        # Add 810-specific handled segments
+        if self.mapping.transaction_id == "810":
+            # TDS -> _map_tds_totals, CAD -> _map_cad_to_shipment, NTE -> _map_nte_notes
+            handled_segments |= {"TDS", "CAD", "NTE"}
         # N2, N3, N4, PER are only handled WITHIN N1 loops, not at header level
 
         # Also include segments from loops that have mappings

@@ -234,6 +234,18 @@ class TestUnmappedTracking:
         # The sample file should have segment data
         assert result.metrics.total_segments_in_document > 0
 
+        # Note: There are known warnings for nested paths that can't be auto-created:
+        # - order_reference.* (requires id field)
+        # - payment_terms[0].* (list index doesn't exist)
+        # - invoiced_quantity.* (requires value and unit_code)
+        # These are documented engine limitations - see plans/mapping/nested-path-autocreation.md
+        # For now, just verify no UNMAPPED_SEGMENT warnings for mapped segments
+        unmapped_segment_warnings = [
+            w for w in result.warnings
+            if w.code.name == "UNMAPPED_SEGMENT" and w.source_path not in ("TDS", "CAD", "CTT")
+        ]
+        assert unmapped_segment_warnings == [], f"Unexpected unmapped segments: {unmapped_segment_warnings}"
+
     def test_unmapped_warnings_can_be_disabled(self, parsed_810_transaction):
         """Test that warn_on_unmapped=False suppresses warnings."""
         engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=False)
