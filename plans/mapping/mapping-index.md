@@ -20,41 +20,41 @@ This index provides an overview of all X12 transaction set mappings to semantic 
 
 | X12 | Name | UBL/Semantic Model | Status | Plan |
 |-----|------|-------------------|--------|------|
-| **850** | Purchase Order | Order | **Implemented** | [850-mapping.md](850-mapping.md) |
-| **855** | PO Acknowledgement | OrderResponse | Planning | [855-mapping.md](855-mapping.md) |
-| **810** | Invoice | Invoice | Planning | [810-mapping.md](810-mapping.md) |
-| **820** | Payment/Remittance | RemittanceAdvice | Planning | [820-mapping.md](820-mapping.md) |
+| **850** | Purchase Order | Order | **Implemented** | [order_850.md](order_850.md) |
+| **855** | PO Acknowledgement | OrderResponse | Planning | [order_acknowledgment_855.md](order_acknowledgment_855.md) |
+| **810** | Invoice | Invoice | **Implemented** | [invoice_810.md](invoice_810.md) |
+| **820** | Payment/Remittance | RemittanceAdvice | Planning | [payment_820.md](payment_820.md) |
 
 ### Fulfillment
 
 | X12 | Name | UBL/Semantic Model | Status | Plan |
 |-----|------|-------------------|--------|------|
-| **856** | Advance Ship Notice | DespatchAdvice | Planning | [856-mapping.md](856-mapping.md) |
-| **846** | Inventory Inquiry/Advice | InventoryReport | Planning | [846-mapping.md](846-mapping.md) |
+| **856** | Advance Ship Notice | DespatchAdvice | Planning | [ship_notice_856.md](ship_notice_856.md) |
+| **846** | Inventory Inquiry/Advice | InventoryReport | Planning | [inventory_846.md](inventory_846.md) |
 
 ### Transportation
 
 | X12 | Name | UBL/Semantic Model | Status | Plan |
 |-----|------|-------------------|--------|------|
-| **204** | Load Tender | TransportExecutionPlanRequest | Planning | [204-mapping.md](204-mapping.md) |
-| **210** | Freight Invoice | FreightInvoice | Planning | [210-mapping.md](210-mapping.md) |
-| **211** | Bill of Lading | BillOfLading | Planning | [211-mapping.md](211-mapping.md) |
-| **214** | Shipment Status | TransportationStatus | Planning | [214-mapping.md](214-mapping.md) |
-| **990** | Load Tender Response | TransportExecutionPlan | Planning | [990-mapping.md](990-mapping.md) |
+| **204** | Load Tender | TransportExecutionPlanRequest | Planning | [load_tender_204.md](load_tender_204.md) |
+| **210** | Freight Invoice | FreightInvoice | Planning | [freight_invoice_210.md](freight_invoice_210.md) |
+| **211** | Bill of Lading | BillOfLading | Planning | [bill_of_lading_211.md](bill_of_lading_211.md) |
+| **214** | Shipment Status | TransportationStatus | Planning | [shipment_status_214.md](shipment_status_214.md) |
+| **990** | Load Tender Response | TransportExecutionPlan | Planning | [load_tender_response_990.md](load_tender_response_990.md) |
 
 ### Warehouse/3PL
 
 | X12 | Name | UBL/Semantic Model | Status | Plan |
 |-----|------|-------------------|--------|------|
-| **940** | Warehouse Shipping Order | ForwardingInstructions | Planning | [940-mapping.md](940-mapping.md) |
-| **945** | Warehouse Shipping Advice | DespatchAdvice | Planning | [945-mapping.md](945-mapping.md) |
-| **947** | Inventory Adjustment | InventoryReport | Planning | [947-mapping.md](947-mapping.md) |
+| **940** | Warehouse Shipping Order | ForwardingInstructions | Planning | [warehouse_order_940.md](warehouse_order_940.md) |
+| **945** | Warehouse Shipping Advice | DespatchAdvice | Planning | [warehouse_shipping_945.md](warehouse_shipping_945.md) |
+| **947** | Inventory Adjustment | InventoryReport | Planning | [warehouse_adjustment_947.md](warehouse_adjustment_947.md) |
 
 ### Technical
 
 | X12 | Name | UBL/Semantic Model | Status | Plan |
 |-----|------|-------------------|--------|------|
-| **997** | Functional Acknowledgement | ApplicationResponse | Planning | [997-mapping.md](997-mapping.md) |
+| **997** | Functional Acknowledgement | ApplicationResponse | Planning | [functional_ack_997.md](functional_ack_997.md) |
 
 ---
 
@@ -174,7 +174,7 @@ X12 uses ANSI codes; semantic models use UN/ECE Rec 20. Most codes are identical
 1. ~~850 Purchase Order~~ ✅ Implemented
 2. 855 PO Acknowledgement
 3. 856 ASN
-4. 810 Invoice
+4. ~~810 Invoice~~ ✅ Implemented
 
 ### Medium Priority (Logistics)
 5. 214 Shipment Status
