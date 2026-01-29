@@ -524,6 +524,148 @@ def get_nested_attr(obj: Any, path: str) -> Any:
 
 
 # =============================================================================
+# Deferred Field Collection Utilities
+# =============================================================================
+
+
+def get_field_type_for_path(model_class: type, path: str) -> type | None:
+    """
+    Get the type annotation for a field at the given path.
+
+    Args:
+        model_class: The Pydantic model class
+        path: Dot-separated path like "order_reference" or "order_reference.id"
+              or "payment_terms[0]" for list item types
+
+    Returns:
+        The type annotation, or None if path not found
+    """
+    if not hasattr(model_class, "model_fields"):
+        return None
+
+    parts = _parse_path_parts(path)
+    current_type = model_class
+
+    for part in parts:
+        if part.startswith("[") and part.endswith("]"):
+            # List index - get the list's element type
+            origin = getattr(current_type, "__origin__", None)
+            if origin is list:
+                args = getattr(current_type, "__args__", ())
+                if args:
+                    current_type = args[0]
+                else:
+                    return None
+            else:
+                return None
+        else:
+            # Attribute access
+            if not hasattr(current_type, "model_fields"):
+                return None
+
+            field_info = current_type.model_fields.get(part)
+            if not field_info or not field_info.annotation:
+                return None
+
+            annotation = field_info.annotation
+            origin = getattr(annotation, "__origin__", None)
+            args = getattr(annotation, "__args__", ())
+
+            # If it's a list type, keep it as-is (next part might be an index)
+            if origin is list:
+                current_type = annotation
+                continue
+
+            if origin is type(None):
+                return None
+
+            # Handle Union types (like Optional)
+            if hasattr(origin, "__name__") and origin.__name__ == "UnionType":
+                # Python 3.10+ union type
+                for arg in args:
+                    if arg is not type(None):
+                        current_type = arg
+                        break
+            elif args:
+                # Check for Optional pattern (Union[X, None])
+                non_none_args = [a for a in args if a is not type(None)]
+                if non_none_args:
+                    # Check if the non-None type is a list
+                    inner_type = non_none_args[0]
+                    inner_origin = getattr(inner_type, "__origin__", None)
+                    if inner_origin is list:
+                        current_type = inner_type  # Keep list type
+                    else:
+                        current_type = inner_type
+                else:
+                    current_type = annotation
+            else:
+                current_type = annotation
+
+    return current_type
+
+
+def get_required_fields(model_class: type) -> set[str]:
+    """Get the set of required field names for a Pydantic model."""
+    required = set()
+    if hasattr(model_class, "model_fields"):
+        for name, field_info in model_class.model_fields.items():
+            if field_info.is_required():
+                required.add(name)
+    return required
+
+
+def can_instantiate_with_fields(model_class: type, available_fields: set[str]) -> bool:
+    """Check if a model can be instantiated with the given fields."""
+    required = get_required_fields(model_class)
+    return required <= available_fields
+
+
+def get_parent_path(path: str) -> str | None:
+    """
+    Get the parent path from a nested path.
+
+    Examples:
+        "order_reference.id" -> "order_reference"
+        "order_reference.document_reference.id" -> "order_reference.document_reference"
+        "payment_terms[0].settlement_period_days" -> "payment_terms[0]"
+        "id" -> None (no parent)
+    """
+    parts = _parse_path_parts(path)
+    if len(parts) <= 1:
+        return None
+    return ".".join(parts[:-1]).replace(".[", "[")
+
+
+def get_field_name(path: str) -> str:
+    """Get the final field name from a path."""
+    parts = _parse_path_parts(path)
+    return parts[-1] if parts else path
+
+
+def analyze_field_groups(field_mappings: list) -> dict[str, list]:
+    """
+    Analyze field mappings to identify groups that target the same parent.
+
+    Returns dict mapping parent path to list of (field_name, field_mapping) tuples.
+    Only includes paths that have nested fields (contain "." in semantic path).
+    """
+    groups: dict[str, list] = {}
+
+    for fm in field_mappings:
+        semantic_path = fm.semantic.path
+        parent = get_parent_path(semantic_path)
+
+        if parent:
+            field_name = get_field_name(semantic_path)
+            if parent not in groups:
+                groups[parent] = []
+            groups[parent].append((field_name, fm))
+
+    return groups
+
+
+# =============================================================================
 # Mapping Engine
 # =============================================================================
 
@@ -564,6 +706,17 @@ class MappingEngine:
         self._mapped_segments = self._get_mapped_segments()
         self._mapped_qualifiers = self._get_mapped_qualifiers()
         self._mapped_elements = self._get_mapped_elements()
+
+        # Analyze field groups for deferred nested object creation
+        self._header_field_groups = analyze_field_groups(self.mapping.field_mappings)
+        # Combine with qualified mappings
+        for qm in self.mapping.qualified_mappings:
+            for mappings in qm.mappings.values():
+                qm_groups = analyze_field_groups(mappings)
+                for parent, fields in qm_groups.items():
+                    if parent not in self._header_field_groups:
+                        self._header_field_groups[parent] = []
+                    self._header_field_groups[parent].extend(fields)
 
     def _get_mapped_segments(self) -> set[str]:
         """Get set of segment tags that have mappings defined."""
@@ -951,7 +1104,8 @@ class MappingEngine:
                 if metrics:
                     metrics.field_mapping_time += time.perf_counter() - field_start
 
-            # Phase 4: Map optional header-level fields
+            # Phase 4: Map optional header-level fields (with deferred collection)
+            deferred_values: dict[str, dict[str, Any]] = {}
             field_start = time.perf_counter()
             self._map_optional_field_mappings(
                 model,
@@ -960,6 +1114,7 @@ class MappingEngine:
                 accumulator,
                 metrics,
                 trace,
+                deferred_values,
             )
             if metrics:
                 metrics.field_mapping_time += time.perf_counter() - field_start
@@ -973,6 +1128,14 @@ class MappingEngine:
                     accumulator,
                     metrics,
                     trace,
+                    deferred_values,
+                )
+
+            # Phase 5.1: Resolve deferred nested fields
+            # This creates nested objects (like order_reference) from collected values
+            if deferred_values:
+                self._resolve_deferred_fields(
+                    model, deferred_values, accumulator, metrics, trace
                 )
 
             # Phase 5.5: Map SAC (Allowance/Charge) segments at header level
@@ -1224,8 +1387,20 @@ class MappingEngine:
         accumulator: ErrorAccumulator,
         metrics: MappingMetrics | None,
         trace: MappingTrace | None,
+        deferred_values: dict[str, dict[str, Any]] | None = None,
     ) -> None:
-        """Map optional (non-required) fields to the model."""
+        """Map optional (non-required) fields to the model.
+
+        Args:
+            model: The model to set values on
+            content: Parsed X12 content
+            field_mappings: Field mappings to apply
+            accumulator: Error accumulator
+            metrics: Optional metrics collector
+            trace: Optional debug trace
+            deferred_values: Optional dict to collect values for nested paths
+                             that can't be set immediately (parent is None)
+        """
         for field_mapping in field_mappings:
             # Skip required fields (already processed)
             if field_mapping.required:
@@ -1263,24 +1438,221 @@ class MappingEngine:
                     )
                     continue
 
-            # Set the value
+            # Try to set the value
             if set_nested_attr(model, field_mapping.semantic.path, value):
                 if metrics:
                     metrics.fields_mapped += 1
                 if trace:
                     trace.add_field(str(path), field_mapping.semantic.path, value)
             else:
-                if metrics:
-                    metrics.fields_skipped += 1
-                # Generate warning for failed mapping when we had a value
-                if self.warn_on_unmapped and value is not None:
+                # Check if this is a nested path that should be deferred
+                semantic_path = field_mapping.semantic.path
+                parent_path = get_parent_path(semantic_path)
+
+                if parent_path and deferred_values is not None:
+                    # Collect for deferred creation
+                    if parent_path not in deferred_values:
+                        deferred_values[parent_path] = {}
+                    field_name = get_field_name(semantic_path)
+                    deferred_values[parent_path][field_name] = value
+
+                    if metrics:
+                        metrics.fields_mapped += 1  # Count as mapped (deferred)
+                    if trace:
+                        trace.add_field(str(path), f"[deferred]{semantic_path}", value)
+                else:
+                    if metrics:
+                        metrics.fields_skipped += 1
+                    # Generate warning for failed mapping when we had a value
+                    if self.warn_on_unmapped and value is not None:
+                        accumulator.add_warning(
+                            MappingErrorCode.CANNOT_SET_FIELD,
+                            f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
+                            source_path=str(path),
+                            target_path=field_mapping.semantic.path,
+                            value=value,
+                        )
+
+    def _resolve_deferred_fields(
+        self,
+        model: Any,
+        deferred_values: dict[str, dict[str, Any]],
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics | None,
+        trace: MappingTrace | None,
+    ) -> None:
+        """Create nested objects from collected deferred field values.
+
+        This resolves paths like "order_reference.id" by creating the
+        OrderReference object with all collected fields and setting it
+        on the parent model.
+        """
+        for parent_path, field_values in deferred_values.items():
+            # Handle list index paths like "payment_terms[0]"
+            if "[" in parent_path and "]" in parent_path:
+                self._resolve_deferred_list_item(
+                    model, parent_path, field_values, accumulator, metrics, trace
+                )
+            else:
+                self._resolve_deferred_object(
+                    model, parent_path, field_values, accumulator, metrics, trace
+                )
+
+    def _resolve_deferred_object(
+        self,
+        model: Any,
+        parent_path: str,
+        field_values: dict[str, Any],
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics | None,
+        trace: MappingTrace | None,
+    ) -> None:
+        """Create and set a nested object from collected field values."""
+        # Get the type for this path
+        parent_type = get_field_type_for_path(type(model), parent_path)
+        if parent_type is None:
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Cannot resolve type for deferred path: {parent_path}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+            return
+
+        # Check if we have the required fields
+        required = get_required_fields(parent_type)
+        available = set(field_values.keys())
+
+        if not required <= available:
+            missing = required - available
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Cannot create {parent_type.__name__} for {parent_path}: "
+                    f"missing required fields {missing}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+            return
+
+        # Try to create the object
+        try:
+            instance = parent_type(**field_values)
+            if set_nested_attr(model, parent_path, instance):
+                if trace:
+                    trace.add_field(
+                        "[deferred]",
+                        parent_path,
+                        f"Created {parent_type.__name__} with {list(field_values.keys())}",
+                    )
+            else:
+                if self.warn_on_unmapped:
                     accumulator.add_warning(
                         MappingErrorCode.CANNOT_SET_FIELD,
-                        f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
-                        source_path=str(path),
-                        target_path=field_mapping.semantic.path,
-                        value=value,
+                        f"Failed to set deferred object at {parent_path}",
+                        source_path="[deferred]",
+                        target_path=parent_path,
                     )
+        except Exception as e:
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Failed to create {parent_type.__name__} for {parent_path}: {e}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+
+    def _resolve_deferred_list_item(
+        self,
+        model: Any,
+        parent_path: str,
+        field_values: dict[str, Any],
+        accumulator: ErrorAccumulator,
+        metrics: MappingMetrics | None,
+        trace: MappingTrace | None,
+    ) -> None:
+        """Create and set a list item from collected field values.
+
+        Handles paths like "payment_terms[0].settlement_period_days" where
+        we need to create a PaymentTerms object and add it to the list.
+        """
+        import re
+
+        # Parse the list path: "payment_terms[0]" -> ("payment_terms", 0)
+        match = re.match(r"^(.+)\[(\d+)\]$", parent_path)
+        if not match:
+            return
+
+        list_attr = match.group(1)
+        target_index = int(match.group(2))
+
+        # Get the list
+        lst = getattr(model, list_attr, None)
+        if not isinstance(lst, list):
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Cannot resolve list for deferred path: {parent_path}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+            return
+
+        # Get the item type
+        item_type = get_field_type_for_path(type(model), f"{list_attr}[0]")
+        if item_type is None:
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Cannot resolve item type for deferred list: {list_attr}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+            return
+
+        # Check if we have required fields
+        required = get_required_fields(item_type)
+        available = set(field_values.keys())
+
+        if not required <= available:
+            missing = required - available
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Cannot create {item_type.__name__} for {parent_path}: "
+                    f"missing required fields {missing}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
+            return
+
+        # Create the item
+        try:
+            instance = item_type(**field_values)
+
+            # Extend list if needed
+            while len(lst) <= target_index:
+                lst.append(instance if len(lst) == target_index else None)
+
+            # Set at target index (if we appended at the right index, it's already there)
+            if len(lst) > target_index and lst[target_index] is None:
+                lst[target_index] = instance
+
+            if trace:
+                trace.add_field(
+                    "[deferred]",
+                    parent_path,
+                    f"Created {item_type.__name__} with {list(field_values.keys())}",
+                )
+        except Exception as e:
+            if self.warn_on_unmapped:
+                accumulator.add_warning(
+                    MappingErrorCode.CANNOT_SET_FIELD,
+                    f"Failed to create {item_type.__name__} for {parent_path}: {e}",
+                    source_path="[deferred]",
+                    target_path=parent_path,
+                )
 
     def _map_envelope_fields(
         self,
@@ -1429,6 +1801,7 @@ class MappingEngine:
         accumulator: ErrorAccumulator,
         metrics: MappingMetrics | None,
         trace: MappingTrace | None,
+        deferred_values: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         """Map qualified segments (DTM, REF, etc.) based on qualifier value."""
         qualifier_path = qualified_mapping.qualifier_path
@@ -1522,18 +1895,38 @@ class MappingEngine:
                             value,
                         )
                 else:
-                    if metrics:
-                        metrics.fields_skipped += 1
-                    # Generate warning for failed qualified mapping
-                    if self.warn_on_unmapped and value is not None:
-                        source = f"{path.segment}[{qualifier_value}]*{path.element}"
-                        accumulator.add_warning(
-                            MappingErrorCode.CANNOT_SET_FIELD,
-                            f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
-                            source_path=source,
-                            target_path=field_mapping.semantic.path,
-                            value=value,
-                        )
+                    # Check if this is a nested path that should be deferred
+                    semantic_path = field_mapping.semantic.path
+                    parent_path = get_parent_path(semantic_path)
+
+                    if parent_path and deferred_values is not None:
+                        # Collect for deferred creation
+                        if parent_path not in deferred_values:
+                            deferred_values[parent_path] = {}
+                        field_name = get_field_name(semantic_path)
+                        deferred_values[parent_path][field_name] = value
+
+                        if metrics:
+                            metrics.fields_mapped += 1  # Count as mapped (deferred)
+                        if trace:
+                            trace.add_field(
+                                f"{path.segment}[{qualifier_value}]*{path.element}",
+                                f"[deferred]{semantic_path}",
+                                value,
+                            )
+                    else:
+                        if metrics:
+                            metrics.fields_skipped += 1
+                        # Generate warning for failed qualified mapping
+                        if self.warn_on_unmapped and value is not None:
+                            source = f"{path.segment}[{qualifier_value}]*{path.element}"
+                            accumulator.add_warning(
+                                MappingErrorCode.CANNOT_SET_FIELD,
+                                f"Failed to set {field_mapping.semantic.path}: path does not exist on model",
+                                source_path=source,
+                                target_path=field_mapping.semantic.path,
+                                value=value,
+                            )
 
     def _map_party_loops(
         self,
@@ -2140,6 +2533,9 @@ class MappingEngine:
                 if field_info.is_required():
                     model_required_fields.add(name)
 
+        # Collect deferred values for nested fields that can't be set directly
+        deferred_values: dict[str, dict[str, Any]] = {}
+
         # Map direct field mappings (skip required ones, already processed)
         for field_mapping in loop_mapping.field_mappings:
             if not isinstance(field_mapping.x12, SegmentPath):
@@ -2201,17 +2597,36 @@ class MappingEngine:
                 if trace:
                     trace.add_field(str(path), semantic_path, value)
             else:
-                if metrics:
-                    metrics.fields_skipped += 1
-                # Generate warning for failed loop item mapping
-                if self.warn_on_unmapped and value is not None:
-                    accumulator.add_warning(
-                        MappingErrorCode.CANNOT_SET_FIELD,
-                        f"Failed to set {semantic_path}: path does not exist on model",
-                        source_path=str(path),
-                        target_path=semantic_path,
-                        value=value,
-                    )
+                # Check if this is a nested path that should be deferred
+                parent_path = get_parent_path(semantic_path)
+
+                if parent_path:
+                    # Collect for deferred creation
+                    if parent_path not in deferred_values:
+                        deferred_values[parent_path] = {}
+                    field_name = get_field_name(semantic_path)
+                    deferred_values[parent_path][field_name] = value
+
+                    if metrics:
+                        metrics.fields_mapped += 1  # Count as mapped (deferred)
+                    if trace:
+                        trace.add_field(str(path), f"[deferred]{semantic_path}", value)
+                else:
+                    if metrics:
+                        metrics.fields_skipped += 1
+                    # Generate warning for failed loop item mapping
+                    if self.warn_on_unmapped and value is not None:
+                        accumulator.add_warning(
+                            MappingErrorCode.CANNOT_SET_FIELD,
+                            f"Failed to set {semantic_path}: path does not exist on model",
+                            source_path=str(path),
+                            target_path=semantic_path,
+                            value=value,
+                        )
+
+        # Resolve deferred nested fields for this loop item
+        if deferred_values:
+            self._resolve_deferred_fields(item, deferred_values, accumulator, metrics, trace)
 
         # Map qualified segments within loop
         for qualified_mapping in loop_mapping.qualified_mappings:

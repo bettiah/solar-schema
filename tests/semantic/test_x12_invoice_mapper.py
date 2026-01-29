@@ -6,7 +6,7 @@ This test file uses the MappingEngine with INVOICE_810_MAPPING.
 
 import pytest
 
-from edi_schema.semantic.mapping import MappingEngine
+from edi_schema.semantic.mapping import MappingEngine, MappingErrorCode
 from edi_schema.semantic.mapping.x12 import INVOICE_810_MAPPING
 
 
@@ -89,21 +89,26 @@ class TestDeclarativeMappingWithFixture:
 
     def test_invoice_has_order_reference(self, mapped_invoice):
         """Test that order reference from BIG is mapped."""
-        # Note: BIG*03/04 (PO Date/Number) mapping requires order_reference to be
-        # pre-created. Currently the engine can't create nested objects from paths.
-        # This is a known limitation - the order_reference will be None.
-        # Future enhancement: auto-create nested objects for paths like "order_reference.id"
-        pass  # Skip - engine limitation
+        from datetime import date
+
+        # BIG*03 = PO Date, BIG*04 = PO Number
+        # Now working with deferred field collection!
+        assert mapped_invoice.order_reference is not None
+        assert mapped_invoice.order_reference.id == "P792940"
+        assert mapped_invoice.order_reference.issue_date == date(2010, 12, 4)
 
     def test_invoice_has_line_items(self, mapped_invoice):
         """Test that invoice lines are mapped."""
+        from decimal import Decimal
+
         assert len(mapped_invoice.invoice_lines) >= 1
         line = mapped_invoice.invoice_lines[0]
         # IT1*01 = Line Number
         assert line.id == "1"
-        # Note: IT1*02/03 (quantity) mapping requires Quantity object to be
-        # pre-created. Currently the engine limitation prevents this.
-        # The quantity is not mapped, but we verify the line exists.
+        # IT1*02/03 (quantity) - now working with deferred field collection!
+        assert line.invoiced_quantity is not None
+        assert line.invoiced_quantity.value == Decimal("4")
+        assert line.invoiced_quantity.unit_code == "EA"
 
     def test_invoice_has_price(self, mapped_invoice):
         """Test that line item price is mapped."""
@@ -153,11 +158,10 @@ class TestDeclarativeMappingWithFixture:
 
     def test_invoice_has_payment_terms(self, mapped_invoice):
         """Test that payment terms from ITD are mapped."""
-        # Note: ITD*07 mapping to payment_terms[0].settlement_period_days
-        # requires payment_terms list to have an item pre-created.
-        # This is an engine limitation for list indexing paths.
-        # The payment_terms list will be empty until this is enhanced.
-        pass  # Skip - engine limitation
+        # ITD*07 = Net Days
+        # Now working with deferred field collection for list items!
+        assert len(mapped_invoice.payment_terms) >= 1
+        assert mapped_invoice.payment_terms[0].settlement_period_days == 60
 
     def test_invoice_line_count_not_mapped(self, mapped_invoice):
         """Test that CTT line count is NOT mapped (X12 control segment only)."""
@@ -242,9 +246,21 @@ class TestUnmappedTracking:
         # For now, just verify no UNMAPPED_SEGMENT warnings for mapped segments
         unmapped_segment_warnings = [
             w for w in result.warnings
-            if w.code.name == "UNMAPPED_SEGMENT" and w.source_path not in ("TDS", "CAD", "CTT")
+            if w.code.name == "UNMAPPED_SEGMENT"
         ]
         assert unmapped_segment_warnings == [], f"Unexpected unmapped segments: {unmapped_segment_warnings}"
+
+        unmapped_element_warnings = [
+            w for w in result.warnings
+            if w.code.name == "UNMAPPED_ELEMENT" and w.source_path not in ("ITD*01", "ITD*02", "ITD*05")
+        ]
+        assert unmapped_element_warnings == [], f"Unexpected unmapped elements: {unmapped_element_warnings}"
+
+        unset_fields = [
+            w for w in result.warnings
+            if w.code == MappingErrorCode.CANNOT_SET_FIELD
+        ]
+        assert unset_fields == [], f"Unexpected unset fields: {unset_fields}"
 
     def test_unmapped_warnings_can_be_disabled(self, parsed_810_transaction):
         """Test that warn_on_unmapped=False suppresses warnings."""

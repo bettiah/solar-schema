@@ -63,6 +63,10 @@
     'invoice_lines': list([
       dict({
         'id': '1',
+        'invoiced_quantity': dict({
+          'unit_code': 'EA',
+          'value': '4',
+        }),
         'item': dict({
           'standard_item_identification': dict({
             'id': dict({
@@ -86,5 +90,14 @@
         'value': '217.4',
       }),
     }),
+    'order_reference': dict({
+      'id': 'P792940',
+      'issue_date': '2010-12-04',
+    }),
+    'payment_terms': list([
+      dict({
+        'settlement_period_days': 60,
+      }),
+    ]),
   })
 # ---
