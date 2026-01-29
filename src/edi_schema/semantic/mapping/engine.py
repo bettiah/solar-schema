@@ -2387,7 +2387,7 @@ class MappingEngine:
     ) -> dict[str, Any]:
         """Extract required fields from loop to build the item."""
         from decimal import Decimal
-        from edi_schema.semantic.models import Item, Quantity
+        from edi_schema.semantic.models import Quantity
 
         item_data: dict[str, Any] = {}
         item_type = loop_mapping.item_type
@@ -2450,24 +2450,12 @@ class MappingEngine:
                 top_field = parts[0].split("[")[0]
                 rest_path = ".".join(parts[1:])
 
+                # Initialize nested dict if needed
                 if top_field not in item_data:
-                    # Initialize the nested object
-                    if top_field == "quantity":
-                        # Will be completed below
-                        item_data[top_field] = {"value": None, "unit_code": None}
-                    elif top_field == "item":
-                        # Store as dict, convert to Item later
-                        item_data[top_field] = {}
+                    item_data[top_field] = {}
 
-                if top_field == "quantity":
-                    # Store in dict for later Quantity construction
-                    if rest_path == "value":
-                        item_data[top_field]["value"] = value
-                    elif rest_path == "unit_code":
-                        item_data[top_field]["unit_code"] = value
-                elif top_field == "item":
-                    # Store in nested dict for later Item construction
-                    self._set_nested_dict_value(item_data[top_field], rest_path, value)
+                # Store value in nested dict for later object construction
+                self._set_nested_dict_value(item_data[top_field], rest_path, value)
 
                 if metrics:
                     metrics.fields_mapped += 1
@@ -2481,36 +2469,42 @@ class MappingEngine:
                 if trace:
                     trace.add_field(str(path), semantic_path, value)
 
-        # Convert quantity dict to Quantity object if present
-        if "quantity" in item_data and isinstance(item_data["quantity"], dict):
-            qty_dict = item_data["quantity"]
-            if qty_dict.get("value") is not None:
-                qty_value = qty_dict["value"]
-                qty_unit = qty_dict.get("unit_code") or "EA"
-                item_data["quantity"] = Quantity(value=qty_value, unit_code=qty_unit)
-            else:
-                # Need a default quantity
-                item_data["quantity"] = Quantity(value=Decimal("0"), unit_code="EA")
-
-        # Convert item dict to Item object if present
-        if "item" in item_data and isinstance(item_data["item"], dict):
-            item_dict = item_data["item"]
-            if item_dict:
-                # Pydantic will handle nested dict conversion
-                item_data["item"] = Item(**item_dict)
-            else:
-                item_data["item"] = Item()
+        # Convert nested dicts to proper Pydantic model objects
+        for field_name in list(item_data.keys()):
+            if isinstance(item_data[field_name], dict) and item_data[field_name]:
+                field_type = get_field_type_for_path(item_type, field_name)
+                if field_type and hasattr(field_type, "model_validate"):
+                    try:
+                        item_data[field_name] = field_type.model_validate(item_data[field_name])
+                    except Exception:
+                        # If validation fails, try direct construction with defaults
+                        field_dict = item_data[field_name]
+                        # Handle Quantity specially - needs unit_code default
+                        if field_type.__name__ == "Quantity" and "unit_code" not in field_dict:
+                            field_dict["unit_code"] = "EA"
+                        item_data[field_name] = field_type(**field_dict)
+            elif isinstance(item_data[field_name], dict) and not item_data[field_name]:
+                # Empty dict - create empty instance
+                field_type = get_field_type_for_path(item_type, field_name)
+                if field_type and hasattr(field_type, "model_validate"):
+                    item_data[field_name] = field_type()
 
         # Ensure required fields have values
         for required_field in model_required_fields:
             if required_field not in item_data:
+                field_type = get_field_type_for_path(item_type, required_field)
                 # Provide defaults for common required fields
                 if required_field == "id":
                     item_data["id"] = ""
-                elif required_field == "quantity":
-                    item_data["quantity"] = Quantity(value=Decimal("0"), unit_code="EA")
-                elif required_field == "item":
-                    item_data["item"] = Item()
+                elif field_type and hasattr(field_type, "model_validate"):
+                    # Create empty instance for Pydantic models
+                    if field_type.__name__ == "Quantity":
+                        item_data[required_field] = Quantity(value=Decimal("0"), unit_code="EA")
+                    else:
+                        try:
+                            item_data[required_field] = field_type()
+                        except Exception:
+                            pass  # Skip if we can't create a default
 
         return item_data
 
