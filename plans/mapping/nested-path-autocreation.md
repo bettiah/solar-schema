@@ -1,5 +1,9 @@
 # Nested Path Auto-Creation Enhancement
 
+**Status: ✅ IMPLEMENTED**
+
+Commit: `cc87bab` - Implement deferred field collection for nested path auto-creation
+
 ## Problem Statement
 
 When mapping X12 fields to semantic model paths like `order_reference.issue_date`, the mapping fails because:
