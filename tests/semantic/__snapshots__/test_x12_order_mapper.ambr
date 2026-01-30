@@ -37,9 +37,6 @@
       dict({
         'id': 'COMPANYB',
       }),
-      dict({
-        'id': 'TEXT',
-      }),
     ]),
     'anticipated_monetary_total': dict({
       'payable_amount': dict({

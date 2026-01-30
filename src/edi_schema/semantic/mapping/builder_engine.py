@@ -1,9 +1,9 @@
 """
 Builder Mapping Engine - Single-pass mapping using Box dict accumulator.
 
-Replaces the multi-phase MappingEngine with a single forward pass through
-content, dispatching each segment/loop to registered handlers. The Pydantic
-model is built once at the end via model_validate(dict).
+Single forward pass through content, dispatching each segment/loop to
+registered handlers. The Pydantic model is built once at the end via
+model_validate(dict).
 """
 
 from __future__ import annotations
@@ -16,10 +16,6 @@ from box import Box
 
 from .context import MessageContext
 from .diagnostics import AggregateMetrics, MappingLogger, MappingMetrics, MappingTrace
-from .engine import (
-    _get_element_value,
-    find_all_loops,
-)
 from .errors import (
     ErrorAccumulator,
     ErrorHandlingMode,

@@ -74,7 +74,7 @@ _HEADER_FIELD_MAPPINGS = [
 
     # FOB segment - Delivery Terms / Incoterms
     # FOB*01 maps to simple delivery_terms string
-    # FOB*02, FOB*03, FOB*04 are mapped to delivery[0].delivery_terms by MappingEngine
+    # FOB*02, FOB*03, FOB*04 are mapped to delivery[0].delivery_terms by BuilderMappingEngine
     FieldMapping(
         seg("FOB", 1),
         sem("delivery[0].delivery_terms.id"),
@@ -107,11 +107,11 @@ _HEADER_FIELD_MAPPINGS = [
     # CTT*01 = Line Count, CTT*02 = Hash Total - validation only
 
     # TDS segment - Total Monetary Value Summary
-    # Handled by MappingEngine._map_tds_totals() which converts cents to decimal
+    # Handled by BuilderMappingEngine._map_tds_totals() which converts cents to decimal
     # TDS*01 = Total Invoice Amount (in cents)
 
     # CAD segment - Carrier Detail
-    # Handled by MappingEngine._map_cad_to_shipment()
+    # Handled by BuilderMappingEngine._map_cad_to_shipment()
 
     # ISS segment - Invoice Shipment Summary
     FieldMapping(
@@ -125,10 +125,10 @@ _HEADER_FIELD_MAPPINGS = [
     ),
 
     # NTE segment - Notes
-    # Handled by MappingEngine._map_nte_notes()
+    # Handled by BuilderMappingEngine._map_nte_notes()
 
     # MSG segment - Notes
-    # Handled by MappingEngine._map_msg_notes()
+    # Handled by BuilderMappingEngine._map_msg_notes()
 ]
 
 
@@ -435,7 +435,7 @@ _IT1_LOOP_MAPPING = LoopMapping(
             sem("price.base_quantity_unit_code"),
         ),
         # IT1*06-25 = Product ID qualifier/value pairs
-        # These are handled by MappingEngine._extract_it1_product_ids()
+        # These are handled by BuilderMappingEngine._extract_it1_product_ids()
 
         # PID segment - Product Description
         FieldMapping(
@@ -479,7 +479,7 @@ _IT1_LOOP_MAPPING = LoopMapping(
             sem("note[0]"),
         ),
 
-        # Line-level SAC, TXI handled by MappingEngine
+        # Line-level SAC, TXI handled by BuilderMappingEngine
     ],
     qualified_mappings=[
         # Line-level DTM
@@ -517,7 +517,7 @@ _IT1_LOOP_MAPPING = LoopMapping(
             },
         ),
     ],
-    # Note: Line-level SAC and TXI handled by MappingEngine
+    # Note: Line-level SAC and TXI handled by BuilderMappingEngine
 )
 
 

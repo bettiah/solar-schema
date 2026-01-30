@@ -2,7 +2,7 @@
 
 import pytest
 
-from edi_schema.semantic.mapping import BuilderMappingEngine, MappingEngine
+from edi_schema.semantic.mapping import BuilderMappingEngine
 from edi_schema.semantic.mapping.x12 import INVOICE_810_MAPPING
 
 
@@ -57,24 +57,6 @@ class TestBuilderEngine810:
     def test_basic_fields(self, builder_invoice):
         assert builder_invoice.id is not None
         assert builder_invoice.issue_date is not None
-
-    def test_comparison_with_old_engine(self, parsed_810, builder_engine):
-        """Compare builder output with old engine output."""
-        old_engine = MappingEngine(INVOICE_810_MAPPING)
-        builder_result = builder_engine.to_semantic(parsed_810)
-        old_result = old_engine.to_semantic(parsed_810)
-
-        assert builder_result.success == old_result.success
-
-        builder_dict = builder_result.model.model_dump(
-            mode="json", exclude_none=True, exclude_defaults=True,
-        )
-        old_dict = old_result.model.model_dump(
-            mode="json", exclude_none=True, exclude_defaults=True,
-        )
-
-        assert builder_dict.get("id") == old_dict.get("id")
-        assert builder_dict.get("issue_date") == old_dict.get("issue_date")
 
     def test_snapshot(self, builder_invoice, snapshot):
         """Snapshot test for full builder output."""

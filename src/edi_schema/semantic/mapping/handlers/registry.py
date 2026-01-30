@@ -1,8 +1,5 @@
 """
 Handler registry: maps transaction IDs to their special segment handlers.
-
-This replaces the scattered `if transaction_id in ("850", "810")` guards
-in the old MappingEngine.
 """
 
 from __future__ import annotations

@@ -71,7 +71,7 @@ _HEADER_FIELD_MAPPINGS = [
     ),
     # FOB segment - Delivery Terms / Incoterms
     # FOB*01 maps to simple delivery_terms string on Order
-    # FOB*02, FOB*03, FOB*05 are mapped to delivery[0].delivery_terms by MappingEngine
+    # FOB*02, FOB*03, FOB*05 are mapped to delivery[0].delivery_terms by BuilderMappingEngine
     # after party loops create the delivery object
     FieldMapping(
         seg("FOB", 1),
@@ -79,7 +79,7 @@ _HEADER_FIELD_MAPPINGS = [
         # PP=Prepaid, CC=Collect, etc.
     ),
     # TD5 segment - Carrier Details
-    # Handled by MappingEngine._map_td5_to_shipment() which creates the Shipment object
+    # Handled by BuilderMappingEngine._map_td5_to_shipment() which creates the Shipment object
     # TD1 segment - Packaging / Lading
     FieldMapping(
         seg("TD1", 1),
@@ -118,9 +118,9 @@ _HEADER_FIELD_MAPPINGS = [
     # CTT*01 = Line Count, CTT*02 = Hash Total - validation only
 
     # AMT segment - Monetary Amount (total)
-    # Handled by MappingEngine._map_amt_totals() which creates MonetaryTotal/Amount objects
+    # Handled by BuilderMappingEngine._map_amt_totals() which creates MonetaryTotal/Amount objects
     # MSG segment - Notes
-    # Handled by MappingEngine._map_msg_notes() which appends to the note list
+    # Handled by BuilderMappingEngine._map_msg_notes() which appends to the note list
 ]
 
 
@@ -141,7 +141,7 @@ _DTM_QUALIFIED_MAPPINGS = QualifiedMapping(
             ),
         ],
         # DTM*010 (Ship Date) and DTM*037 (Ship Not Before) are handled by
-        # MappingEngine._map_dtm_despatch() which creates the Despatch object
+        # BuilderMappingEngine._map_dtm_despatch() which creates the Despatch object
         "038": [
             FieldMapping(
                 seg("DTM", 2),
@@ -421,7 +421,7 @@ _PO1_LOOP_MAPPING = LoopMapping(
             sem("price.base_quantity_unit_code"),
         ),
         # PO1*06-25 = Product ID qualifier/value pairs
-        # These are handled by MappingEngine._extract_po1_product_ids()
+        # These are handled by BuilderMappingEngine._extract_po1_product_ids()
         # PID segment - Product Description
         FieldMapping(
             seg("PID", 5),
@@ -455,7 +455,7 @@ _PO1_LOOP_MAPPING = LoopMapping(
             seg("MSG", 1),
             sem("note[0]"),
         ),
-        # Line-level SAC, SCH handled by MappingEngine
+        # Line-level SAC, SCH handled by BuilderMappingEngine
     ],
     qualified_mappings=[
         # Line-level DTM
@@ -493,7 +493,7 @@ _PO1_LOOP_MAPPING = LoopMapping(
             },
         ),
     ],
-    # Note: Line-level SAC and SCH handled by MappingEngine
+    # Note: Line-level SAC and SCH handled by BuilderMappingEngine
 )
 
 

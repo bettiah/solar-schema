@@ -111,6 +111,17 @@ def set_box_path(
     current: Any = builder
 
     for i, token in enumerate(tokens[:-1]):
+        # Look ahead: if next token is a list index, ensure current token
+        # resolves to a list (not a Box auto-vivified dict)
+        next_token = tokens[i + 1] if i + 1 < len(tokens) else None
+        if next_token and next_token.startswith("[") and not token.startswith("["):
+            if isinstance(current, (Box, dict)):
+                existing = current.get(token)
+                if not isinstance(existing, list):
+                    current[token] = []
+                current = current[token]
+                continue
+
         current = _navigate_token(current, token, ctx, create=True)
         if current is None:
             return
@@ -144,11 +155,13 @@ def _navigate_token(
         # List index or append
         idx_str = token[1:-1]
         if idx_str == "+":
-            # Append requires context
-            if ctx is None:
-                return None
-            # The list should already exist as a Python list on the parent
-            # This case shouldn't happen in navigation (only as final token)
+            # Append a new Box to the list and return a reference to it.
+            # We must return current[-1] (not the local new_item) because
+            # BoxList may wrap the appended object, making the original
+            # reference stale.
+            if isinstance(current, list):
+                current.append(Box(default_box=True))
+                return current[-1]
             return None
 
         idx = int(idx_str)
@@ -158,9 +171,6 @@ def _navigate_token(
             while len(current) <= idx:
                 current.append(Box(default_box=True))
             return current[idx]
-        elif isinstance(current, Box):
-            # Box auto-vivifies as dict; shouldn't happen for lists
-            return None
         return None
     else:
         # Named attribute

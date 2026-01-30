@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from box import Box
 
-from edi_schema.semantic.mapping.engine import _get_element_value
+from edi_schema.semantic.mapping.segment_utils import get_element_value as _get_element_value
 from edi_schema.semantic.mapping.errors import MappingErrorCode
 
 from .base import HandlerContext, set_box_path

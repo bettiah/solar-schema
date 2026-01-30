@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from edi_schema.semantic.mapping import BuilderMappingEngine, MappingEngine
+from edi_schema.semantic.mapping import BuilderMappingEngine
 from edi_schema.semantic.mapping.x12 import ORDER_850_MAPPING
 
 
@@ -44,16 +44,8 @@ class TestBuilderEngine850:
         return BuilderMappingEngine(ORDER_850_MAPPING)
 
     @pytest.fixture
-    def old_engine(self):
-        return MappingEngine(ORDER_850_MAPPING)
-
-    @pytest.fixture
     def builder_result(self, parsed_850, builder_engine):
         return builder_engine.to_semantic(parsed_850)
-
-    @pytest.fixture
-    def old_result(self, parsed_850, old_engine):
-        return old_engine.to_semantic(parsed_850)
 
     @pytest.fixture
     def builder_order(self, builder_result):
@@ -133,33 +125,6 @@ class TestBuilderEngine850:
         assert bt_party is not None
         assert bt_party.party.contact is not None
         assert bt_party.party.contact.name is not None
-
-    def test_comparison_with_old_engine(self, builder_result, old_result):
-        """Compare builder output with old engine output."""
-        assert builder_result.success == old_result.success
-
-        builder_dict = builder_result.model.model_dump(
-            mode="json", exclude_none=True, exclude_defaults=True,
-        )
-        old_dict = old_result.model.model_dump(
-            mode="json", exclude_none=True, exclude_defaults=True,
-        )
-
-        # Compare key sections
-        assert builder_dict.get("id") == old_dict.get("id")
-        assert builder_dict.get("issue_date") == old_dict.get("issue_date")
-        assert builder_dict.get("document_currency_code") == old_dict.get("document_currency_code")
-        assert builder_dict.get("document_purpose_code") == old_dict.get("document_purpose_code")
-        assert builder_dict.get("order_type_code") == old_dict.get("order_type_code")
-        assert builder_dict.get("delivery_terms") == old_dict.get("delivery_terms")
-
-        # Compare line items count and basic fields
-        builder_lines = builder_dict.get("order_lines", [])
-        old_lines = old_dict.get("order_lines", [])
-        assert len(builder_lines) == len(old_lines)
-
-        if builder_lines and old_lines:
-            assert builder_lines[0].get("id") == old_lines[0].get("id")
 
     def test_snapshot(self, builder_order, snapshot):
         """Snapshot test for full builder output."""

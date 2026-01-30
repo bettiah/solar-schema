@@ -1,13 +1,13 @@
 """
 Tests for X12 850 Order mapping using the declarative mapping system.
 
-This test file uses the new MappingEngine with ORDER_850_MAPPING instead of
+This test file uses the new BuilderMappingEngine with ORDER_850_MAPPING instead of
 the old procedural X12OrderMapper.
 """
 
 import pytest
 
-from edi_schema.semantic.mapping import MappingEngine
+from edi_schema.semantic.mapping import BuilderMappingEngine
 from edi_schema.semantic.mapping.x12 import ORDER_850_MAPPING
 
 
@@ -53,12 +53,12 @@ class TestDeclarativeMappingWithFixture:
 
     @pytest.fixture
     def mapping_engine(self):
-        """Create a MappingEngine with the 850 Order mapping."""
-        return MappingEngine(ORDER_850_MAPPING)
+        """Create a BuilderMappingEngine with the 850 Order mapping."""
+        return BuilderMappingEngine(ORDER_850_MAPPING)
 
     @pytest.fixture
     def mapping_result(self, parsed_850_transaction, mapping_engine):
-        """Map the parsed 850 to semantic Order using MappingEngine."""
+        """Map the parsed 850 to semantic Order using BuilderMappingEngine."""
         return mapping_engine.to_semantic(parsed_850_transaction)
 
     @pytest.fixture
@@ -211,7 +211,7 @@ class TestUnmappedTracking:
         """Test that unmapped tracking collects unmapped qualifiers."""
         from edi_schema.semantic.mapping.errors import MappingErrorCode
 
-        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        engine = BuilderMappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
         result = engine.to_semantic(parsed_850_transaction)
 
         # Should still succeed (warnings don't cause failure)
@@ -249,7 +249,7 @@ class TestUnmappedTracking:
 
     def test_unmapped_warnings_can_be_disabled(self, parsed_850_transaction):
         """Test that warn_on_unmapped=False suppresses warnings."""
-        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=False)
+        engine = BuilderMappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=False)
         result = engine.to_semantic(parsed_850_transaction)
 
         assert result.success
@@ -262,7 +262,7 @@ class TestUnmappedTracking:
 
     def test_metrics_contain_unmapped_summary(self, parsed_850_transaction):
         """Test that metrics contain unmapped data summary."""
-        engine = MappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        engine = BuilderMappingEngine(ORDER_850_MAPPING, collect_metrics=True, warn_on_unmapped=True)
         result = engine.to_semantic(parsed_850_transaction)
 
         assert result.metrics is not None
@@ -273,13 +273,13 @@ class TestUnmappedTracking:
         assert "unmapped_qualifiers" in summary
 
 
-class TestMappingEngineFeatures:
-    """Test MappingEngine features like metrics and validation."""
+class TestBuilderMappingEngineFeatures:
+    """Test BuilderMappingEngine features like metrics and validation."""
 
     @pytest.fixture
     def engine(self):
-        """Create a MappingEngine with metrics enabled."""
-        return MappingEngine(ORDER_850_MAPPING, collect_metrics=True)
+        """Create a BuilderMappingEngine with metrics enabled."""
+        return BuilderMappingEngine(ORDER_850_MAPPING, collect_metrics=True)
 
     @pytest.fixture
     def mock_transaction(self):

@@ -6,7 +6,7 @@ and semantic business models, replacing procedural mapper code with data-driven
 mapping definitions.
 
 Example usage:
-    from edi_schema.semantic.mapping import MappingEngine, MessageContext
+    from edi_schema.semantic.mapping import BuilderMappingEngine, MessageContext
     from edi_schema.semantic.mapping.x12 import ORDER_850_MAPPING
 
     # Create context with envelope and external metadata
@@ -16,8 +16,8 @@ Example usage:
         received_at=datetime.now(),
     )
 
-    # Create mapper and convert
-    engine = MappingEngine(ORDER_850_MAPPING)
+    # Create engine and convert
+    engine = BuilderMappingEngine(ORDER_850_MAPPING)
     result = engine.to_semantic(transaction, context=context)
 
     if result.success:
@@ -36,7 +36,6 @@ from .diagnostics import (
     MappingTrace,
 )
 from .builder_engine import BuilderMappingEngine
-from .engine import MappingEngine
 from .errors import (
     ErrorAccumulator,
     ErrorContext,
@@ -110,7 +109,6 @@ from .validators import (
 
 __all__ = [
     # Core Engine
-    "MappingEngine",
     "BuilderMappingEngine",
     "MessageContext",
     # Results

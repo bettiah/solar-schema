@@ -1,12 +1,12 @@
 """
 Tests for X12 810 Invoice mapping using the declarative mapping system.
 
-This test file uses the MappingEngine with INVOICE_810_MAPPING.
+This test file uses the BuilderMappingEngine with INVOICE_810_MAPPING.
 """
 
 import pytest
 
-from edi_schema.semantic.mapping import MappingEngine, MappingErrorCode
+from edi_schema.semantic.mapping import BuilderMappingEngine, MappingErrorCode
 from edi_schema.semantic.mapping.x12 import INVOICE_810_MAPPING
 
 
@@ -52,12 +52,12 @@ class TestDeclarativeMappingWithFixture:
 
     @pytest.fixture
     def mapping_engine(self):
-        """Create a MappingEngine with the 810 Invoice mapping."""
-        return MappingEngine(INVOICE_810_MAPPING)
+        """Create a BuilderMappingEngine with the 810 Invoice mapping."""
+        return BuilderMappingEngine(INVOICE_810_MAPPING)
 
     @pytest.fixture
     def mapping_result(self, parsed_810_transaction, mapping_engine):
-        """Map the parsed 810 to semantic Invoice using MappingEngine."""
+        """Map the parsed 810 to semantic Invoice using BuilderMappingEngine."""
         return mapping_engine.to_semantic(parsed_810_transaction)
 
     @pytest.fixture
@@ -226,7 +226,7 @@ class TestUnmappedTracking:
 
     def test_unmapped_tracking_enabled(self, parsed_810_transaction):
         """Test that unmapped tracking collects unmapped data."""
-        engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        engine = BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=True)
         result = engine.to_semantic(parsed_810_transaction)
 
         # Should still succeed (warnings don't cause failure)
@@ -264,7 +264,7 @@ class TestUnmappedTracking:
 
     def test_unmapped_warnings_can_be_disabled(self, parsed_810_transaction):
         """Test that warn_on_unmapped=False suppresses warnings."""
-        engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=False)
+        engine = BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=False)
         result = engine.to_semantic(parsed_810_transaction)
 
         assert result.success
@@ -277,7 +277,7 @@ class TestUnmappedTracking:
 
     def test_metrics_contain_unmapped_summary(self, parsed_810_transaction):
         """Test that metrics contain unmapped data summary."""
-        engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=True)
+        engine = BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True, warn_on_unmapped=True)
         result = engine.to_semantic(parsed_810_transaction)
 
         assert result.metrics is not None
@@ -288,8 +288,8 @@ class TestUnmappedTracking:
         assert "unmapped_qualifiers" in summary
 
 
-class TestMappingEngineFeatures:
-    """Test MappingEngine features like metrics and validation."""
+class TestBuilderMappingEngineFeatures:
+    """Test BuilderMappingEngine features like metrics and validation."""
 
     @pytest.fixture
     def schema_loader(self):
@@ -318,8 +318,8 @@ class TestMappingEngineFeatures:
 
     @pytest.fixture
     def engine(self):
-        """Create a MappingEngine with metrics enabled."""
-        return MappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
+        """Create a BuilderMappingEngine with metrics enabled."""
+        return BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
 
     @pytest.fixture
     def mock_transaction(self):
@@ -395,7 +395,7 @@ class TestMappingEngineFeatures:
         """Test that TDS amounts are correctly converted from cents using real fixture."""
         from decimal import Decimal
 
-        engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
+        engine = BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
         result = engine.to_semantic(parsed_810_transaction)
 
         assert result.success

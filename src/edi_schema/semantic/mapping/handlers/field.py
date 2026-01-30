@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from box import Box
 
-from edi_schema.semantic.mapping.engine import _get_composite_component, _get_element_value
+from edi_schema.semantic.mapping.segment_utils import get_composite_component as _get_composite_component, get_element_value as _get_element_value
 from edi_schema.semantic.mapping.errors import MappingErrorCode
 from edi_schema.semantic.mapping.types import EnvelopePath, SegmentPath
 

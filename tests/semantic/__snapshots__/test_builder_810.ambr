@@ -26,6 +26,14 @@
         ]),
       }),
     }),
+    'additional_document_references': list([
+      dict({
+        'id': '099',
+      }),
+      dict({
+        'id': '99999',
+      }),
+    ]),
     'delivery': list([
       dict({
         'delivery_party': dict({
@@ -86,5 +94,10 @@
       'id': 'P792940',
       'issue_date': '2010-12-04',
     }),
+    'payment_terms': list([
+      dict({
+        'settlement_period_days': 60,
+      }),
+    ]),
   })
 # ---

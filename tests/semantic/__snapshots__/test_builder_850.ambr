@@ -33,6 +33,11 @@
         }),
       }),
     }),
+    'additional_document_references': list([
+      dict({
+        'id': 'COMPANYB',
+      }),
+    ]),
     'anticipated_monetary_total': dict({
       'payable_amount': dict({
         'currency': 'USD',
