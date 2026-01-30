@@ -1,0 +1,89 @@
+# serializer version: 1
+# name: TestX12SampleFiles.test_parse_sample_file_with_schema[855_purchase_order_ack]
+  dict({
+    'control_number': '000000003',
+    'groups': list([
+      dict({
+        'control_number': '3',
+        'functional_id': 'PR',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  '00',
+                  'NA',
+                  '12635837',
+                  '20070418',
+                ]),
+                'tag': 'BAK',
+                'type': 'segment',
+              }),
+              dict({
+                'children': list([
+                  dict({
+                    'children': list([
+                    ]),
+                    'iteration': 1,
+                    'loop_id': 'ACK',
+                    'segments': list([
+                      dict({
+                        'elements': list([
+                          'IA',
+                        ]),
+                        'tag': 'ACK',
+                        'type': 'segment',
+                      }),
+                    ]),
+                    'type': 'loop',
+                  }),
+                  dict({
+                    'children': list([
+                    ]),
+                    'iteration': 1,
+                    'loop_id': 'CTT',
+                    'segments': list([
+                      dict({
+                        'elements': list([
+                          '1',
+                        ]),
+                        'tag': 'CTT',
+                        'type': 'segment',
+                      }),
+                    ]),
+                    'type': 'loop',
+                  }),
+                ]),
+                'iteration': 1,
+                'loop_id': 'PO1',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      '1',
+                      '',
+                      '',
+                      '',
+                      '',
+                      'PL',
+                      '1',
+                    ]),
+                    'tag': 'PO1',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+            ]),
+            'control_number': '0002',
+            'segment_count': 6,
+            'transaction_id': '855',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': '12345829',
+    'sender_id': '3378503333',
+    'version': '00401',
+  })
+# ---

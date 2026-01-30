@@ -1,0 +1,186 @@
+# serializer version: 1
+# name: TestX12SampleFilesWithoutSchema.test_parse_sample_file_no_schema[820_remittance_advice]
+  dict({
+    'control_number': '000000001',
+    'groups': list([
+      dict({
+        'control_number': '1',
+        'functional_id': 'RA',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  'I',
+                  '0.00',
+                  'C',
+                  'ZZZ',
+                ]),
+                'tag': 'BPR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'VN',
+                  'USD',
+                ]),
+                'tag': 'CUR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '999',
+                  '20150524',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PE',
+                  'Department A',
+                  'G',
+                  '656162',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PR',
+                  'CompanyA.com',
+                  'PI',
+                  '2677',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'ENT',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PO',
+                  '554681037',
+                  'PI',
+                  '10.49',
+                ]),
+                'tag': 'RMR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1J',
+                  '65616202',
+                  'Department A Greenville UT',
+                ]),
+                'tag': 'REF',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '173',
+                  '20150523',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PO',
+                  '554841872',
+                  'PI',
+                  '17.99',
+                ]),
+                'tag': 'RMR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1J',
+                  '65616202',
+                  'Department A Greenville UT',
+                ]),
+                'tag': 'REF',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '173',
+                  '20150523',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PO',
+                  '554719617',
+                  'PI',
+                  '8.98',
+                ]),
+                'tag': 'RMR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1J',
+                  '65616203',
+                  'Department A Greenville UT',
+                ]),
+                'tag': 'REF',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '173',
+                  '20150523',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PO',
+                  '554648526',
+                  'PI',
+                  '20.24',
+                ]),
+                'tag': 'RMR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1J',
+                  '65616203',
+                  'Department A Greenville UT',
+                ]),
+                'tag': 'REF',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '173',
+                  '20150523',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '0001',
+            'segment_count': 20,
+            'transaction_id': '820',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': '9999697299',
+    'sender_id': '123456789',
+    'version': '00401',
+  })
+# ---

@@ -1,0 +1,218 @@
+# serializer version: 1
+# name: TestX12SampleFilesWithoutSchema.test_parse_sample_file_no_schema[850_purchase_order]
+  dict({
+    'control_number': '000005007',
+    'groups': list([
+      dict({
+        'control_number': '5007',
+        'functional_id': 'PO',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  '00',
+                  'DS',
+                  '5907867',
+                  '',
+                  '20161206',
+                ]),
+                'tag': 'BEG',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SN',
+                  'USD',
+                ]),
+                'tag': 'CUR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '8M',
+                  'COMPANYB',
+                  'ORIGIN',
+                ]),
+                'tag': 'REF',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'OC',
+                  'Donna Person',
+                  'TE',
+                  '4255552515 ',
+                  'FX',
+                  '4255553875',
+                ]),
+                'tag': 'PER',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'PP',
+                  'ZZ',
+                  'UPS Ground #442E1W',
+                ]),
+                'tag': 'FOB',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '010',
+                  '20161206',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '',
+                  '2',
+                  'UPSN',
+                  '',
+                  'UPS Ground #442E2E',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  'SG',
+                ]),
+                'tag': 'TD5',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'LI',
+                  'TEXT',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'If items are available for partial shipment, please contact companyA@trading.com for authorization prior to release',
+                ]),
+                'tag': 'MSG',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'ST',
+                  'Company Attn 41309514',
+                  '92',
+                  '0857673380000',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1000 BABELWAY PL',
+                ]),
+                'tag': 'N3',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'CHICAGO',
+                  'IL',
+                  '60639-1030',
+                  'US',
+                ]),
+                'tag': 'N4',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'ST',
+                  'Sender',
+                  'TE',
+                  '7735555120',
+                ]),
+                'tag': 'PER',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'BT',
+                  'CompanyA',
+                  '92',
+                  '0857673380000',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1000 BABELWAY PL',
+                ]),
+                'tag': 'N3',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'City',
+                  'UT',
+                  '98034',
+                  'US',
+                ]),
+                'tag': 'N4',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'IC',
+                  'Donna Person',
+                  'TE',
+                  '4255552515',
+                ]),
+                'tag': 'PER',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                  '1',
+                  'EA',
+                  '8.90',
+                  '',
+                  'VP',
+                  '32230538',
+                ]),
+                'tag': 'PO1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                  '1',
+                ]),
+                'tag': 'CTT',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'TT',
+                  '8.90',
+                ]),
+                'tag': 'AMT',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '0001',
+            'segment_count': 22,
+            'transaction_id': '850',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': 'Company',
+    'sender_id': '085767000',
+    'version': '00401',
+  })
+# ---

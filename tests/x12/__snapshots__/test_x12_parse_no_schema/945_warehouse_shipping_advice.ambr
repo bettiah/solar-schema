@@ -1,0 +1,1452 @@
+# serializer version: 1
+# name: TestX12SampleFilesWithoutSchema.test_parse_sample_file_no_schema[945_warehouse_shipping_advice]
+  dict({
+    'control_number': '100022181',
+    'groups': list([
+      dict({
+        'control_number': '100022181',
+        'functional_id': 'SW',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  'F',
+                  '0080200000',
+                  '20180305',
+                  '00553850',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  'AS',
+                ]),
+                'tag': 'W06',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'ST',
+                  'WRKSHOP DISTRIBUTORS LTD',
+                  '91',
+                  '0003100000',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SF',
+                  'Managers',
+                  '92',
+                  '1610',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'MA',
+                  '00550000',
+                  '',
+                  '20180305',
+                  '1700',
+                  '08',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '2I',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'KK',
+                  'LF',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'ZZ',
+                  'EXPD',
+                  'Managers International of UT, Inc',
+                  'CC',
+                ]),
+                'tag': 'W27',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'LX',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'GM',
+                  '00000110000013820000',
+                ]),
+                'tag': 'MAN',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'CC',
+                  '100',
+                  '100',
+                  '',
+                  'PC',
+                  '',
+                  'VN',
+                  'E911746',
+                ]),
+                'tag': 'W12',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'LI',
+                  '000010',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LS',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'LX',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014917',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014695',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014692',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014694',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014899',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014920',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014907',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014731',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014897',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014751',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014896',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014728',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014696',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014713',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014739',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014765',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014741',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014928',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014924',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014914',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014701',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014740',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014722',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014792',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014705',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014719',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014689',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014898',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014697',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014706',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014901',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014913',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014748',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014921',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH015103',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014900',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014700',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014738',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014747',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014714',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014736',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014903',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014802',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014707',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014709',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014715',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014690',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014729',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014894',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014810',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014808',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014716',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014866',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014922',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014752',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014724',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014925',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014730',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014711',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014754',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014721',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014908',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014704',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014710',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014725',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014746',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014902',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014743',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014734',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014699',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014812',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014718',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014717',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014927',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014867',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014904',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014691',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014822',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014712',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014703',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014720',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014702',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014745',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014735',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014756',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014732',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014832',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014744',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014750',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014708',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014698',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014905',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014749',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014910',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014693',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014906',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014755',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014773',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014807',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH014859',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LE',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'CC',
+                  '30',
+                  '30',
+                  '',
+                  'PC',
+                  '',
+                  'VN',
+                  'E126407',
+                ]),
+                'tag': 'W12',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'LI',
+                  '000040',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LS',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'LX',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000264',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000262',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000265',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000274',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000267',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000251',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000273',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000272',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000258',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000280',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000253',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000270',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000279',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000276',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000263',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000254',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000278',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000268',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000277',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000259',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000266',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000257',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000271',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000275',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000252',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000261',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000256',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000269',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000255',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BOOH000260',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LE',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'CC',
+                  '20',
+                  '20',
+                  '',
+                  'PC',
+                  '',
+                  'VN',
+                  'E641234',
+                ]),
+                'tag': 'W12',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'LI',
+                  '000030',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LS',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'LX',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019048',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019020',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019022',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019030',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019009',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019045',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019035',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019017',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019032',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019031',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019046',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019024',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019041',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019039',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019037',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019038',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019036',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019042',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019033',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'SE',
+                  'BABL019023',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '0312',
+                ]),
+                'tag': 'LE',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '150',
+                  '2.000',
+                  'KG',
+                ]),
+                'tag': 'W03',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '0001',
+            'segment_count': 177,
+            'transaction_id': '945',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': 'F2FETP',
+    'sender_id': '035231234',
+    'version': '00401',
+  })
+# ---

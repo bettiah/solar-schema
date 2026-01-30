@@ -1,0 +1,415 @@
+# serializer version: 1
+# name: TestX12SampleFiles.test_parse_sample_file_with_schema[835_remittance]
+  dict({
+    'control_number': '000000001',
+    'groups': list([
+      dict({
+        'control_number': '1',
+        'functional_id': 'HP',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  'I',
+                  '2250.00',
+                  'C',
+                  'CHK',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '20210115',
+                ]),
+                'tag': 'BPR',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                  'CHK889977',
+                  '1999999999',
+                ]),
+                'tag': 'TRN',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '405',
+                  '20210115',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'children': list([
+                ]),
+                'iteration': 1,
+                'loop_id': '1000',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      'PR',
+                      'UNITED HEALTHCARE',
+                      'XV',
+                      '87726',
+                    ]),
+                    'tag': 'N1',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+              dict({
+                'children': list([
+                ]),
+                'iteration': 2,
+                'loop_id': '1000',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      'PE',
+                      'MEDICAL GROUP LLC',
+                      'XX',
+                      '1234567890',
+                    ]),
+                    'tag': 'N1',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+              dict({
+                'children': list([
+                  dict({
+                    'children': list([
+                      dict({
+                        'children': list([
+                        ]),
+                        'iteration': 1,
+                        'loop_id': '2110',
+                        'segments': list([
+                          dict({
+                            'elements': list([
+                              'HC',
+                              '150.00',
+                              '120.00',
+                            ]),
+                            'tag': 'SVC',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              '472',
+                              '20210101',
+                            ]),
+                            'tag': 'DTM',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              'PR',
+                              '2',
+                              '30.00',
+                            ]),
+                            'tag': 'CAS',
+                            'type': 'segment',
+                          }),
+                        ]),
+                        'type': 'loop',
+                      }),
+                    ]),
+                    'iteration': 1,
+                    'loop_id': '2100',
+                    'segments': list([
+                      dict({
+                        'elements': list([
+                          'CLM2024001',
+                          '1',
+                          '150.00',
+                          '120.00',
+                          '30.00',
+                          'MB',
+                          '9988776655',
+                        ]),
+                        'tag': 'CLP',
+                        'type': 'segment',
+                      }),
+                      dict({
+                        'elements': list([
+                          'QC',
+                          '1',
+                          'DOE',
+                          'JOHN',
+                          '',
+                          '',
+                          '',
+                          'MI',
+                          'MBI123456789',
+                        ]),
+                        'tag': 'NM1',
+                        'type': 'segment',
+                      }),
+                      dict({
+                        'elements': list([
+                          '232',
+                          '20210101',
+                        ]),
+                        'tag': 'DTM',
+                        'type': 'segment',
+                      }),
+                      dict({
+                        'elements': list([
+                          '233',
+                          '20210101',
+                        ]),
+                        'tag': 'DTM',
+                        'type': 'segment',
+                      }),
+                    ]),
+                    'type': 'loop',
+                  }),
+                  dict({
+                    'children': list([
+                      dict({
+                        'children': list([
+                          dict({
+                            'children': list([
+                            ]),
+                            'iteration': 2,
+                            'loop_id': '2110',
+                            'segments': list([
+                              dict({
+                                'elements': list([
+                                  'HC',
+                                  '500.00',
+                                  '0.00',
+                                ]),
+                                'tag': 'SVC',
+                                'type': 'segment',
+                              }),
+                              dict({
+                                'elements': list([
+                                  '472',
+                                  '20210102',
+                                ]),
+                                'tag': 'DTM',
+                                'type': 'segment',
+                              }),
+                            ]),
+                            'type': 'loop',
+                          }),
+                        ]),
+                        'iteration': 2,
+                        'loop_id': '2100',
+                        'segments': list([
+                          dict({
+                            'elements': list([
+                              'CLM2024002',
+                              '3',
+                              '500.00',
+                              '0.00',
+                              '500.00',
+                              'MB',
+                              '9988776656',
+                            ]),
+                            'tag': 'CLP',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              'QC',
+                              '1',
+                              'SMITH',
+                              'JANE',
+                              '',
+                              '',
+                              '',
+                              'MI',
+                              'MBI987654321',
+                            ]),
+                            'tag': 'NM1',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              '232',
+                              '20210102',
+                            ]),
+                            'tag': 'DTM',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              '233',
+                              '20210102',
+                            ]),
+                            'tag': 'DTM',
+                            'type': 'segment',
+                          }),
+                          dict({
+                            'elements': list([
+                              'CO',
+                              '50',
+                              '500.00',
+                            ]),
+                            'tag': 'CAS',
+                            'type': 'segment',
+                          }),
+                        ]),
+                        'type': 'loop',
+                      }),
+                      dict({
+                        'children': list([
+                          dict({
+                            'children': list([
+                              dict({
+                                'children': list([
+                                ]),
+                                'iteration': 3,
+                                'loop_id': '2110',
+                                'segments': list([
+                                  dict({
+                                    'elements': list([
+                                      'HC',
+                                      '2500.00',
+                                      '2130.00',
+                                    ]),
+                                    'tag': 'SVC',
+                                    'type': 'segment',
+                                  }),
+                                  dict({
+                                    'elements': list([
+                                      '472',
+                                      '20210103',
+                                    ]),
+                                    'tag': 'DTM',
+                                    'type': 'segment',
+                                  }),
+                                  dict({
+                                    'elements': list([
+                                      'CO',
+                                      '45',
+                                      '200.00',
+                                    ]),
+                                    'tag': 'CAS',
+                                    'type': 'segment',
+                                  }),
+                                  dict({
+                                    'elements': list([
+                                      'PR',
+                                      '1',
+                                      '170.00',
+                                    ]),
+                                    'tag': 'CAS',
+                                    'type': 'segment',
+                                  }),
+                                ]),
+                                'type': 'loop',
+                              }),
+                            ]),
+                            'iteration': 3,
+                            'loop_id': '2100',
+                            'segments': list([
+                              dict({
+                                'elements': list([
+                                  'CLM2024003',
+                                  '1',
+                                  '2500.00',
+                                  '2130.00',
+                                  '370.00',
+                                  'MB',
+                                  '9988776657',
+                                ]),
+                                'tag': 'CLP',
+                                'type': 'segment',
+                              }),
+                              dict({
+                                'elements': list([
+                                  'QC',
+                                  '1',
+                                  'JOHNSON',
+                                  'BOB',
+                                  '',
+                                  '',
+                                  '',
+                                  'MI',
+                                  'MBI555444333',
+                                ]),
+                                'tag': 'NM1',
+                                'type': 'segment',
+                              }),
+                              dict({
+                                'elements': list([
+                                  '232',
+                                  '20210103',
+                                ]),
+                                'tag': 'DTM',
+                                'type': 'segment',
+                              }),
+                            ]),
+                            'type': 'loop',
+                          }),
+                        ]),
+                        'iteration': 3,
+                        'loop_id': '2000',
+                        'segments': list([
+                          dict({
+                            'elements': list([
+                              '3',
+                            ]),
+                            'tag': 'LX',
+                            'type': 'segment',
+                          }),
+                        ]),
+                        'type': 'loop',
+                      }),
+                    ]),
+                    'iteration': 2,
+                    'loop_id': '2000',
+                    'segments': list([
+                      dict({
+                        'elements': list([
+                          '2',
+                        ]),
+                        'tag': 'LX',
+                        'type': 'segment',
+                      }),
+                    ]),
+                    'type': 'loop',
+                  }),
+                ]),
+                'iteration': 1,
+                'loop_id': '2000',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      '1',
+                    ]),
+                    'tag': 'LX',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+            ]),
+            'control_number': '0001',
+            'segment_count': 31,
+            'transaction_id': '835',
+          }),
+        ]),
+        'version': '005010X221A1',
+      }),
+    ]),
+    'receiver_id': 'PROVIDER',
+    'sender_id': 'PAYER',
+    'version': '00501',
+  })
+# ---

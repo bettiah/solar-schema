@@ -1,0 +1,89 @@
+# serializer version: 1
+# name: TestX12SampleFilesWithoutSchema.test_parse_sample_file_no_schema[947_warehouse_inventory_adjustment]
+  dict({
+    'control_number': '982634811',
+    'groups': list([
+      dict({
+        'control_number': '982634833',
+        'functional_id': 'AW',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  '20130704',
+                  '3PL_Man_Tran_N',
+                ]),
+                'tag': 'W15',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'WH',
+                  '3PL NewYork',
+                  '91',
+                  '1510',
+                ]),
+                'tag': 'N1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '07',
+                  '20130704',
+                ]),
+                'tag': 'G62',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'AH',
+                  '1',
+                  'PC',
+                  '',
+                  'VN',
+                  'E662255',
+                ]),
+                'tag': 'W19',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'M1',
+                  'FGI',
+                  'From Attn',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'M1',
+                  'BSTK',
+                  'To Attn',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'ZZ',
+                  '311',
+                ]),
+                'tag': 'N9',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '0001',
+            'segment_count': 9,
+            'transaction_id': '947',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': '0123TP',
+    'sender_id': '012339425',
+    'version': '00401',
+  })
+# ---

@@ -1,0 +1,4 @@
+# serializer version: 1
+# name: Test997Generation.test_generate_997_for_sample[820_remittance_advice]
+  'ST*997*0001~AK1*RA*1~AK2*820*0001~AK5*A~AK9*A*1*1*1~SE*6*0001~'
+# ---

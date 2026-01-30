@@ -1,0 +1,62 @@
+# serializer version: 1
+# name: TestX12SampleFilesWithoutSchema.test_parse_sample_file_no_schema[855_purchase_order_ack]
+  dict({
+    'control_number': '000000003',
+    'groups': list([
+      dict({
+        'control_number': '3',
+        'functional_id': 'PR',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  '00',
+                  'NA',
+                  '12635837',
+                  '20070418',
+                ]),
+                'tag': 'BAK',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                  '',
+                  '',
+                  '',
+                  '',
+                  'PL',
+                  '1',
+                ]),
+                'tag': 'PO1',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  'IA',
+                ]),
+                'tag': 'ACK',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'CTT',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '0002',
+            'segment_count': 6,
+            'transaction_id': '855',
+          }),
+        ]),
+        'version': '004010',
+      }),
+    ]),
+    'receiver_id': '12345829',
+    'sender_id': '3378503333',
+    'version': '00401',
+  })
+# ---

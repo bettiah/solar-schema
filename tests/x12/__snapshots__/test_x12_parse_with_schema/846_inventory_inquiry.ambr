@@ -1,0 +1,114 @@
+# serializer version: 1
+# name: TestX12SampleFiles.test_parse_sample_file_with_schema[846_inventory_inquiry]
+  dict({
+    'control_number': '000003678',
+    'groups': list([
+      dict({
+        'control_number': '1421',
+        'functional_id': 'IB',
+        'transactions': list([
+          dict({
+            'content': list([
+              dict({
+                'elements': list([
+                  '13',
+                  'PI',
+                  '4589',
+                  '20001104',
+                ]),
+                'tag': 'BIA',
+                'type': 'segment',
+              }),
+              dict({
+                'elements': list([
+                  '040',
+                  '20001108',
+                ]),
+                'tag': 'DTM',
+                'type': 'segment',
+              }),
+              dict({
+                'children': list([
+                ]),
+                'iteration': 1,
+                'loop_id': 'N1',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      'DS',
+                      'HC DISTRIBUTOR',
+                      '21',
+                      '78YU0JN90',
+                    ]),
+                    'tag': 'N1',
+                    'type': 'segment',
+                  }),
+                  dict({
+                    'elements': list([
+                      'IC',
+                      'PAUL SMITH',
+                      'TE',
+                      '651-555-0891',
+                      'EM',
+                      'COMPANY@1EDISOURCE.COM',
+                    ]),
+                    'tag': 'PER',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+              dict({
+                'children': list([
+                ]),
+                'iteration': 1,
+                'loop_id': 'LIN',
+                'segments': list([
+                  dict({
+                    'elements': list([
+                      '1',
+                      'MG',
+                      '1000',
+                      'UK',
+                      '50387698433528',
+                      'LT',
+                      '43552',
+                    ]),
+                    'tag': 'LIN',
+                    'type': 'segment',
+                  }),
+                  dict({
+                    'elements': list([
+                      'F',
+                      '',
+                      '',
+                      '',
+                      'DRAPE, SMALL TOWEL, CLEAR PLASTIC, ADHESIVE STRIP',
+                    ]),
+                    'tag': 'PID',
+                    'type': 'segment',
+                  }),
+                ]),
+                'type': 'loop',
+              }),
+              dict({
+                'elements': list([
+                  '1',
+                ]),
+                'tag': 'CTT',
+                'type': 'segment',
+              }),
+            ]),
+            'control_number': '1001',
+            'segment_count': 9,
+            'transaction_id': '846',
+          }),
+        ]),
+        'version': '004010VICS',
+      }),
+    ]),
+    'receiver_id': '999999999',
+    'sender_id': '1234567890',
+    'version': '00401',
+  })
+# ---
