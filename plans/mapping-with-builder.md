@@ -1,5 +1,26 @@
 # Plan: Single-Pass Builder Mapping Engine
 
+## Status: IMPLEMENTED
+
+All steps complete. 101 tests pass (77 existing + 24 new builder engine tests).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| Step 1: Foundation | Done | `python-box` added, `handlers/base.py` with protocols, `set_box_path`, `strip_empty_boxes` |
+| Step 2: Core handlers | Done | `FieldMappingHandler`, `QualifiedMappingHandler`, `LoopItemHandler`, `PartyLoopHandler` |
+| Step 3: Special handlers | Done | SAC, TXI, FOB, TD5, MSG, AMT, TDS, CAD, NTE, PER, DTM despatch + registry |
+| Step 4: Dispatch table | Done | Segment + loop dispatch tables built in `__init__` |
+| Step 5: BuilderMappingEngine | Done | Single-pass engine with pre-normalization, post-processing for delivery merging, party wrapper fixups, currency defaults |
+| Step 6: Testing | Done | 850 + 810 comparison tests, snapshot tests, handler unit tests |
+
+### Additional implementation details not in original plan
+- **Unseen defaults pass**: Field mappings with `default` values for segments that never appear in content need a separate pass after the main loop
+- **Delivery merging**: FOB/TD5/DTM create `delivery[0]` before N1 party loops append `delivery[1]`; post-processing merges them
+- **Party wrapper fixup**: `strip_empty_boxes` removes empty `party: {}` dicts required by CustomerParty; restored in `_restore_required_empty_objects`
+- **Price/Amount currency**: Auto-sets `currency` from `document_currency_code` on price amounts and monetary totals
+
+---
+
 ## Problem
 
 The current `MappingEngine.to_semantic()` runs 13+ phases, each scanning `TransactionSetInstance.content` separately via `find_segment`/`find_all_segments`/`find_all_loops`. This creates:

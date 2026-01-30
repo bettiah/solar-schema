@@ -35,6 +35,7 @@ from .diagnostics import (
     MappingStep,
     MappingTrace,
 )
+from .builder_engine import BuilderMappingEngine
 from .engine import MappingEngine
 from .errors import (
     ErrorAccumulator,
@@ -110,6 +111,7 @@ from .validators import (
 __all__ = [
     # Core Engine
     "MappingEngine",
+    "BuilderMappingEngine",
     "MessageContext",
     # Results
     "MappingResult",

@@ -1,0 +1,146 @@
+# serializer version: 1
+# name: TestBuilderEngine850.test_snapshot
+  dict({
+    'accounting_customer_party': dict({
+      'buyer_contact': dict({
+        'name': 'Donna Person',
+        'telephone': '4255552515',
+      }),
+      'party': dict({
+        'contact': dict({
+          'name': 'Donna Person',
+          'telephone': '4255552515',
+        }),
+        'party_identifications': list([
+          dict({
+            'id': dict({
+              'scheme_id': 'BuyerAssigned',
+              'value': '0857673380000',
+            }),
+          }),
+        ]),
+        'party_names': list([
+          dict({
+            'name': 'CompanyA',
+          }),
+        ]),
+        'postal_address': dict({
+          'city_name': 'City',
+          'country_code': 'US',
+          'country_subentity': 'UT',
+          'postal_zone': '98034',
+          'street_name': '1000 BABELWAY PL',
+        }),
+      }),
+    }),
+    'anticipated_monetary_total': dict({
+      'payable_amount': dict({
+        'currency': 'USD',
+        'value': '8.90',
+      }),
+    }),
+    'buyer_customer_party': dict({
+      'buyer_contact': dict({
+        'name': 'Donna Person',
+        'telefax': '4255553875',
+        'telephone': '4255552515 ',
+      }),
+      'party': dict({
+      }),
+    }),
+    'delivery': list([
+      dict({
+        'delivery_location': dict({
+          'city_name': 'CHICAGO',
+          'country_code': 'US',
+          'country_subentity': 'IL',
+          'postal_zone': '60639-1030',
+          'street_name': '1000 BABELWAY PL',
+        }),
+        'delivery_party': dict({
+          'contact': dict({
+            'name': 'Sender',
+            'telephone': '7735555120',
+          }),
+          'party_identifications': list([
+            dict({
+              'id': dict({
+                'scheme_id': 'BuyerAssigned',
+                'value': '0857673380000',
+              }),
+            }),
+          ]),
+          'party_names': list([
+            dict({
+              'name': 'Company Attn 41309514',
+            }),
+          ]),
+          'postal_address': dict({
+            'city_name': 'CHICAGO',
+            'country_code': 'US',
+            'country_subentity': 'IL',
+            'postal_zone': '60639-1030',
+            'street_name': '1000 BABELWAY PL',
+          }),
+        }),
+        'delivery_terms': dict({
+          'loss_risk_responsibility_code': 'ZZ',
+          'special_terms': 'UPS Ground #442E1W',
+        }),
+        'despatch': dict({
+          'requested_despatch_date': '2016-12-06',
+        }),
+        'shipment': dict({
+          'carrier_party': dict({
+            'party_identifications': list([
+              dict({
+                'id': dict({
+                  'scheme_id': '2',
+                  'value': 'UPSN',
+                }),
+              }),
+            ]),
+          }),
+          'shipment_stages': list([
+            dict({
+              'transit_direction_code': 'UPS Ground #442E2E',
+            }),
+          ]),
+          'shipping_priority_level_code': 'SG',
+        }),
+      }),
+    ]),
+    'delivery_terms': 'PP',
+    'document_currency_code': 'USD',
+    'document_purpose_code': '00',
+    'id': '5907867',
+    'issue_date': '2016-12-06',
+    'note': list([
+      'If items are available for partial shipment, please contact companyA@trading.com for authorization prior to release',
+    ]),
+    'order_lines': list([
+      dict({
+        'id': '1',
+        'item': dict({
+          'sellers_item_identification': dict({
+            'id': dict({
+              'scheme_id': 'VP',
+              'value': '32230538',
+            }),
+          }),
+        }),
+        'price': dict({
+          'price_amount': dict({
+            'currency': 'USD',
+            'value': '8.90',
+          }),
+        }),
+        'quantity': dict({
+          'unit_code': 'EA',
+          'value': '1',
+        }),
+      }),
+    ]),
+    'order_type_code': 'DS',
+  })
+# ---
