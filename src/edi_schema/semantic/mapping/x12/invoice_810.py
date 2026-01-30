@@ -6,7 +6,7 @@ Declarative mapping from X12 810 Invoice to semantic Invoice model.
 
 from edi_schema.semantic.models import Invoice, InvoiceLine
 
-from ..transforms import PARSE_AMOUNT_CENTS, PARSE_DATE, PARSE_DECIMAL, TO_INT
+from ..transforms import MAP_INVOICE_TYPE, PARSE_AMOUNT_CENTS, PARSE_DATE, PARSE_DECIMAL, TO_INT
 from ..types import (
     FieldMapping,
     LoopMapping,
@@ -55,7 +55,7 @@ _HEADER_FIELD_MAPPINGS = [
     FieldMapping(
         seg("BIG", 7),
         sem("invoice_type_code"),
-        # Transaction Type Code - will be transformed by engine
+        to_semantic_transform=MAP_INVOICE_TYPE,
     ),
     # BIG*08 = Transaction Set Purpose Code - not mapped (structural)
     # BIG*10 = Prior Invoice Number - handled separately for billing references

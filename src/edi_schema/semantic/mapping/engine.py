@@ -237,6 +237,8 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
 
     parts = _parse_path_parts(path)
     current = obj
+    last_attr_parent: Any = None
+    last_attr_name: str | None = None
 
     for i, part in enumerate(parts[:-1]):
         if part.startswith("[") and part.endswith("]"):
@@ -249,11 +251,23 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
                 return _handle_append_with_nested(current, remaining_parts, value)
             try:
                 index = int(index_str)
-                if isinstance(current, list) and 0 <= index < len(current):
+                if isinstance(current, list):
+                    if len(current) <= index:
+                        current.extend([None] * (index + 1 - len(current)))
+
+                    if current[index] is None and last_attr_parent is not None and last_attr_name:
+                        new_item = _create_list_item_for_parent(
+                            last_attr_parent,
+                            last_attr_name,
+                        )
+                        if new_item is not None:
+                            current[index] = new_item
+
+                    if current[index] is None:
+                        return False
+
                     current = current[index]
                 else:
-                    # List index out of bounds - don't create new items
-                    # This allows other phases to create the list items first
                     return False
             except ValueError:
                 return False
@@ -261,6 +275,8 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
             # Attribute access
             if hasattr(current, part):
                 attr_value = getattr(current, part)
+                last_attr_parent = current
+                last_attr_name = part
                 if attr_value is None:
                     # Try to create the intermediate object
                     # Get type hint to know what to create
@@ -283,7 +299,9 @@ def set_nested_attr(obj: Any, path: str, value: Any) -> bool:
             return False
         try:
             index = int(index_str)
-            if isinstance(current, list) and 0 <= index < len(current):
+            if isinstance(current, list):
+                if len(current) <= index:
+                    current.extend([None] * (index + 1 - len(current)))
                 current[index] = value
                 return True
             return False
@@ -346,6 +364,34 @@ def _handle_append_with_nested(list_obj: list, remaining_parts: list[str], value
         return True
 
     return False
+
+
+def _create_list_item_for_parent(parent_obj: Any, list_attr_name: str) -> Any:
+    """Create a list element instance using the parent's type hints."""
+    parent_class = type(parent_obj)
+    if not hasattr(parent_class, "model_fields"):
+        return None
+
+    field_info = parent_class.model_fields.get(list_attr_name)
+    if not field_info or not field_info.annotation:
+        return None
+
+    annotation = field_info.annotation
+    origin = getattr(annotation, "__origin__", None)
+    args = getattr(annotation, "__args__", ())
+
+    if origin is not list or not args:
+        return None
+
+    element_type = args[0]
+    element_origin = getattr(element_type, "__origin__", None)
+    if element_origin is type(None):
+        return None
+
+    try:
+        return element_type()
+    except Exception:
+        return None
 
 
 def _parse_path_parts(path: str) -> list[str]:
@@ -643,6 +689,27 @@ def get_field_name(path: str) -> str:
     return parts[-1] if parts else path
 
 
+def split_list_item_path(path: str) -> tuple[str, str] | None:
+    """Split a path into list item path and field subpath.
+
+    Example:
+        "delivery[0].requested_delivery_period.end_date"
+        -> ("delivery[0]", "requested_delivery_period.end_date")
+    """
+    parts = _parse_path_parts(path)
+    for i in range(len(parts) - 1, -1, -1):
+        part = parts[i]
+        if part.startswith("[") and part.endswith("]") and part[1:-1].isdigit():
+            list_item_parts = parts[: i + 1]
+            remaining_parts = parts[i + 1 :]
+            if not remaining_parts:
+                return None
+            list_item_path = ".".join(list_item_parts).replace(".[", "[")
+            sub_path = ".".join(remaining_parts).replace(".[", "[")
+            return list_item_path, sub_path
+    return None
+
+
 def analyze_field_groups(field_mappings: list) -> dict[str, list]:
     """
     Analyze field mappings to identify groups that target the same parent.
@@ -663,6 +730,31 @@ def analyze_field_groups(field_mappings: list) -> dict[str, list]:
             groups[parent].append((field_name, fm))
 
     return groups
+
+
+def _add_deferred_value(
+    deferred_values: dict[str, dict[str, Any]],
+    semantic_path: str,
+    value: Any,
+) -> bool:
+    """Record a deferred value for later nested object creation."""
+    list_item_info = split_list_item_path(semantic_path)
+    if list_item_info:
+        list_item_path, field_path = list_item_info
+        if list_item_path not in deferred_values:
+            deferred_values[list_item_path] = {}
+        deferred_values[list_item_path][field_path] = value
+        return True
+
+    parent_path = get_parent_path(semantic_path)
+    if parent_path:
+        if parent_path not in deferred_values:
+            deferred_values[parent_path] = {}
+        field_name = get_field_name(semantic_path)
+        deferred_values[parent_path][field_name] = value
+        return True
+
+    return False
 
 
 # =============================================================================
@@ -1447,15 +1539,9 @@ class MappingEngine:
             else:
                 # Check if this is a nested path that should be deferred
                 semantic_path = field_mapping.semantic.path
-                parent_path = get_parent_path(semantic_path)
-
-                if parent_path and deferred_values is not None:
-                    # Collect for deferred creation
-                    if parent_path not in deferred_values:
-                        deferred_values[parent_path] = {}
-                    field_name = get_field_name(semantic_path)
-                    deferred_values[parent_path][field_name] = value
-
+                if deferred_values is not None and _add_deferred_value(
+                    deferred_values, semantic_path, value
+                ):
                     if metrics:
                         metrics.fields_mapped += 1  # Count as mapped (deferred)
                     if trace:
@@ -1584,11 +1670,23 @@ class MappingEngine:
         if not match:
             return
 
-        list_attr = match.group(1)
+        list_path = match.group(1)
         target_index = int(match.group(2))
 
-        # Get the list
-        lst = getattr(model, list_attr, None)
+        # Get or create the list
+        lst = get_nested_attr(model, list_path)
+        if lst is None:
+            if not set_nested_attr(model, list_path, []):
+                if self.warn_on_unmapped:
+                    accumulator.add_warning(
+                        MappingErrorCode.CANNOT_SET_FIELD,
+                        f"Cannot resolve list for deferred path: {parent_path}",
+                        source_path="[deferred]",
+                        target_path=parent_path,
+                    )
+                return
+            lst = get_nested_attr(model, list_path)
+
         if not isinstance(lst, list):
             if self.warn_on_unmapped:
                 accumulator.add_warning(
@@ -1600,12 +1698,12 @@ class MappingEngine:
             return
 
         # Get the item type
-        item_type = get_field_type_for_path(type(model), f"{list_attr}[0]")
+        item_type = get_field_type_for_path(type(model), f"{list_path}[0]")
         if item_type is None:
             if self.warn_on_unmapped:
                 accumulator.add_warning(
                     MappingErrorCode.CANNOT_SET_FIELD,
-                    f"Cannot resolve item type for deferred list: {list_attr}",
+                    f"Cannot resolve item type for deferred list: {list_path}",
                     source_path="[deferred]",
                     target_path=parent_path,
                 )
@@ -1613,7 +1711,7 @@ class MappingEngine:
 
         # Check if we have required fields
         required = get_required_fields(item_type)
-        available = set(field_values.keys())
+        available = {key.split(".")[0] for key in field_values.keys()}
 
         if not required <= available:
             missing = required - available
@@ -1629,7 +1727,14 @@ class MappingEngine:
 
         # Create the item
         try:
-            instance = item_type(**field_values)
+            item_data: dict[str, Any] = {}
+            for field_name, field_value in field_values.items():
+                if "." in field_name:
+                    self._set_nested_dict_value(item_data, field_name, field_value)
+                else:
+                    item_data[field_name] = field_value
+
+            instance = item_type(**item_data)
 
             # Extend list if needed
             while len(lst) <= target_index:
@@ -1897,15 +2002,9 @@ class MappingEngine:
                 else:
                     # Check if this is a nested path that should be deferred
                     semantic_path = field_mapping.semantic.path
-                    parent_path = get_parent_path(semantic_path)
-
-                    if parent_path and deferred_values is not None:
-                        # Collect for deferred creation
-                        if parent_path not in deferred_values:
-                            deferred_values[parent_path] = {}
-                        field_name = get_field_name(semantic_path)
-                        deferred_values[parent_path][field_name] = value
-
+                    if deferred_values is not None and _add_deferred_value(
+                        deferred_values, semantic_path, value
+                    ):
                         if metrics:
                             metrics.fields_mapped += 1  # Count as mapped (deferred)
                         if trace:
@@ -2592,15 +2691,7 @@ class MappingEngine:
                     trace.add_field(str(path), semantic_path, value)
             else:
                 # Check if this is a nested path that should be deferred
-                parent_path = get_parent_path(semantic_path)
-
-                if parent_path:
-                    # Collect for deferred creation
-                    if parent_path not in deferred_values:
-                        deferred_values[parent_path] = {}
-                    field_name = get_field_name(semantic_path)
-                    deferred_values[parent_path][field_name] = value
-
+                if _add_deferred_value(deferred_values, semantic_path, value):
                     if metrics:
                         metrics.fields_mapped += 1  # Count as mapped (deferred)
                     if trace:

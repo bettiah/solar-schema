@@ -129,10 +129,11 @@ class TestSchemasPackage:
         result = list_schemas()
         assert isinstance(result, list)
 
+    @pytest.mark.skipif(SCHEMAS_GENERATED, reason="Schemas have been generated")
     def test_schema_exists_false_without_generation(self):
         # Without generation, should return False
         result = schema_exists("Invoice")
-        assert result is False or SCHEMAS_GENERATED is False
+        assert result is False
 
     @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="Schemas not generated")
     def test_get_schema_raises_without_generation(self):

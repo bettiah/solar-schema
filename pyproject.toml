@@ -30,6 +30,9 @@ packages = ["src/edi_schema"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore:Can not relate snapshot:UserWarning",
+]
 
 [tool.ruff]
 line-length = 100

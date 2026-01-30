@@ -662,7 +662,9 @@ class TestValidatorWithGeneratedSchemas:
 
         # Should have code lists
         assert len(schema.code_lists) > 0
-        assert "CurrencyCode" in schema.code_lists
+        assert any(
+            cl.short_name == "CurrencyCode" for cl in schema.code_lists.values()
+        )
 
     @pytest.mark.skipif(not SCHEMAS_GENERATED, reason="UBL schemas not generated")
     def test_generated_schema_has_abies(self):

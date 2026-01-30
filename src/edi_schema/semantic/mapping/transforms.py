@@ -256,6 +256,23 @@ PARSE_AMOUNT_CENTS = Transform(
     description="Parse amount with implied 2 decimal places",
 )
 
+# Invoice type code mapping (X12 BIG*07 -> UBL InvoiceTypeCode)
+INVOICE_TYPE_MAP = {
+    "": "380",
+    "CN": "381",
+    "CR": "381",
+    "DI": "383",
+    "DR": "383",
+    "RU": "381",
+    "SU": "385",
+}
+
+MAP_INVOICE_TYPE = create_code_map_transform(
+    name="MAP_INVOICE_TYPE",
+    code_map=INVOICE_TYPE_MAP,
+    description="Map X12 invoice type codes to UBL InvoiceTypeCode",
+)
+
 # Identity transform (no conversion)
 IDENTITY = Transform(
     name="IDENTITY",
@@ -306,6 +323,7 @@ class TransformRegistry:
             PARSE_DECIMAL,
             TO_INT,
             PARSE_AMOUNT_CENTS,
+            MAP_INVOICE_TYPE,
             IDENTITY,
             STRIP,
             PARSE_BOOLEAN,

@@ -1,234 +1,31 @@
 """
-Tests for parsing X12 sample files.
+Non-snapshot tests for parsing X12 sample files.
 
-These tests parse all sample files in tests/fixtures/x12_samples/ using the
-high-level parse_file API and verify the parsed output matches expected structures.
+These tests verify structural properties, transaction types, HL hierarchies,
+schema validation, loop hierarchy caching, and parse statistics.
 
-Snapshot testing with syrupy:
-  - First run creates snapshots: pytest tests/x12/test_x12_samples.py
-  - Update snapshots: pytest tests/x12/test_x12_samples.py --snapshot-update
+Snapshot tests are in separate modules:
+  - test_x12_parse_with_schema.py
+  - test_x12_parse_no_schema.py
+  - test_x12_997_generation.py
+  - test_x12_specific_samples.py
 """
 
 from pathlib import Path
 
 import pytest
 
-from edi_schema.x12.ack import generate_997
-from edi_schema.x12.ast import (
-    ErrorSeverity,
-    LoopInstance,
-    ParsedSegment,
-    RawSegment,
-)
+from edi_schema.x12.ast import LoopInstance, ParsedSegment
 from edi_schema.x12.parser import parse, parse_file
 from edi_schema.x12.schemas import GeneratedX12SchemaLoader
-from edi_schema.x12.validator import (
-    ValidationLevel,
-    X12Validator,
-)
+from edi_schema.x12.validator import ValidationLevel, X12Validator
 
-# Path to X12 sample files
-X12_SAMPLES_DIR = Path(__file__).parent.parent / "fixtures" / "x12_samples"
-HIPAA_SAMPLES_DIR = X12_SAMPLES_DIR / "hipaa"
-LOGISTICS_SAMPLES_DIR = X12_SAMPLES_DIR / "logistics"
-
-
-def get_sample_files(directory: Path) -> list[Path]:
-    """Get all X12 sample files from a directory."""
-    if not directory.exists():
-        return []
-    return sorted(directory.glob("*.x12"))
-
-
-def get_schema_version_for_file(x12_file: Path) -> str:
-    """Determine the schema version to use for a given X12 file.
-
-    Reads the ISA segment to detect the version (ISA12), then maps to schema version.
-    """
-    content = x12_file.read_text()
-
-    # ISA is always 106 characters with fixed positions
-    # ISA12 (version) is at positions 84-88 (0-indexed: 83-88)
-    if len(content) >= 89:
-        version_raw = content[84:89]
-        if version_raw == "00401":
-            return "004010"
-        elif version_raw == "00501":
-            return "005010"
-
-    # Default to 005010 for HIPAA files
-    if "hipaa" in str(x12_file).lower():
-        return "005010"
-
-    # Default to 004010 for logistics files
-    if "logistics" in str(x12_file).lower():
-        return "004010"
-
-    return "005010"
-
-
-def get_schema_loader_for_file(x12_file: Path) -> GeneratedX12SchemaLoader:
-    """Get the appropriate schema loader for a given X12 file."""
-    version = get_schema_version_for_file(x12_file)
-    return GeneratedX12SchemaLoader(version=version)
-
-
-def get_all_sample_files() -> list[Path]:
-    """Get all X12 sample files from all subdirectories."""
-    files = []
-    files.extend(get_sample_files(HIPAA_SAMPLES_DIR))
-    files.extend(get_sample_files(LOGISTICS_SAMPLES_DIR))
-    return files
-
-
-# Get list of sample files for parametrization
-HIPAA_SAMPLE_FILES = get_sample_files(HIPAA_SAMPLES_DIR)
-LOGISTICS_SAMPLE_FILES = get_sample_files(LOGISTICS_SAMPLES_DIR)
-SAMPLE_FILES = get_all_sample_files()
-
-
-@pytest.fixture
-def schema_loader() -> GeneratedX12SchemaLoader:
-    """Load X12 005010 schema using pre-generated schemas."""
-    return GeneratedX12SchemaLoader(version="005010")
-
-
-def interchange_to_dict(interchange) -> dict | None:
-    """Convert an InterchangeInstance to a dictionary for snapshot comparison."""
-    if interchange is None:
-        return None
-
-    return {
-        "sender_id": interchange.sender_id.strip(),
-        "receiver_id": interchange.receiver_id.strip(),
-        "control_number": interchange.control_number,
-        "version": interchange.version,
-        "groups": [group_to_dict(g) for g in interchange.groups],
-    }
-
-
-def group_to_dict(group) -> dict:
-    """Convert a FunctionalGroupInstance to a dictionary."""
-    return {
-        "functional_id": group.functional_id,
-        "control_number": group.control_number,
-        "version": group.version,
-        "transactions": [transaction_to_dict(t) for t in group.transactions],
-    }
-
-
-def transaction_to_dict(txn) -> dict:
-    """Convert a TransactionSetInstance to a dictionary."""
-    return {
-        "transaction_id": txn.transaction_id,
-        "control_number": txn.control_number,
-        "segment_count": txn.segment_count,
-        "content": [content_item_to_dict(item) for item in txn.content],
-    }
-
-
-def content_item_to_dict(item) -> dict:
-    """Convert content item (segment or loop) to a dictionary."""
-    if isinstance(item, LoopInstance):
-        return {
-            "type": "loop",
-            "loop_id": item.loop_id,
-            "iteration": item.iteration,
-            "segments": [segment_to_dict(s) for s in item.segments],
-            "children": [content_item_to_dict(c) for c in item.children],
-        }
-    elif isinstance(item, ParsedSegment):
-        return segment_to_dict(item)
-    elif isinstance(item, RawSegment):
-        return raw_segment_to_dict(item)
-    else:
-        return {"type": "unknown", "value": str(item)}
-
-
-def segment_to_dict(seg: ParsedSegment) -> dict:
-    """Convert a ParsedSegment to a dictionary."""
-    return {
-        "type": "segment",
-        "tag": seg.tag,
-        "elements": [elem.value for elem in seg.elements],
-    }
-
-
-def raw_segment_to_dict(seg: RawSegment) -> dict:
-    """Convert a RawSegment to a dictionary."""
-    elements = []
-    for elem in seg.elements:
-        if hasattr(elem, "value"):
-            elements.append(elem.value)
-        elif hasattr(elem, "components"):
-            elements.append(":".join(elem.components))
-        else:
-            elements.append(str(elem))
-    return {
-        "type": "segment",
-        "tag": seg.tag,
-        "elements": elements,
-    }
+from .conftest import SAMPLE_FILES, get_schema_loader_for_file
 
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
-)
-class TestX12SampleFiles:
-    """Tests for parsing X12 sample files with schema binding."""
-
-    @pytest.mark.parametrize(
-        "x12_file",
-        SAMPLE_FILES,
-        ids=[f.stem for f in SAMPLE_FILES],
-    )
-    def test_parse_sample_file_with_schema(
-        self,
-        x12_file: Path,
-        snapshot,
-    ):
-        """Parse sample file with schema binding and verify structure matches snapshot."""
-        schema_loader = get_schema_loader_for_file(x12_file)
-        result = parse_file(x12_file, schema_loader=schema_loader)
-
-        # Should parse without fatal errors
-        fatal_errors = [e for e in result.errors if e.severity == ErrorSeverity.FATAL]
-        assert len(fatal_errors) == 0, f"Parse failed: {fatal_errors}"
-        assert result.interchange is not None
-
-        parsed = interchange_to_dict(result.interchange)
-        assert parsed == snapshot
-
-
-@pytest.mark.skipif(
-    not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
-)
-class TestX12SampleFilesWithoutSchema:
-    """Tests for parsing X12 sample files without schema binding."""
-
-    @pytest.mark.parametrize(
-        "x12_file",
-        SAMPLE_FILES,
-        ids=[f.stem for f in SAMPLE_FILES],
-    )
-    def test_parse_sample_file_no_schema(self, x12_file: Path, snapshot):
-        """Parse sample file without schema and verify structure matches snapshot."""
-        result = parse(x12_file)
-
-        # Should parse without fatal errors
-        fatal_errors = [e for e in result.errors if e.severity == ErrorSeverity.FATAL]
-        assert len(fatal_errors) == 0, f"Parse failed: {fatal_errors}"
-        assert result.interchange is not None
-
-        parsed = interchange_to_dict(result.interchange)
-        assert parsed == snapshot
-
-
-@pytest.mark.skipif(
-    not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
+    reason="X12 sample files not found",
 )
 class TestTransactionTypeDetection:
     """Tests for transaction type detection across all sample files."""
@@ -294,7 +91,7 @@ class TestTransactionTypeDetection:
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
+    reason="X12 sample files not found",
 )
 class TestHLHierarchy:
     """Tests for HL (Hierarchical Level) parsing in sample files."""
@@ -328,41 +125,7 @@ class TestHLHierarchy:
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
-)
-class Test997Generation:
-    """Tests for 997 acknowledgment generation from sample files."""
-
-    @pytest.mark.parametrize(
-        "x12_file",
-        SAMPLE_FILES,
-        ids=[f.stem for f in SAMPLE_FILES],
-    )
-    def test_generate_997_for_sample(self, x12_file: Path, snapshot):
-        """Generate 997 for sample file and verify structure matches snapshot."""
-        result = parse(x12_file)
-
-        assert result.interchange is not None
-
-        for group in result.interchange.groups:
-            ack = generate_997(group, control_number="0001")
-
-            # 997 should have proper structure
-            assert "ST*997*0001" in ack
-            assert "AK1*" in ack
-            assert "AK5*" in ack
-            assert "AK9*" in ack
-            assert "SE*" in ack
-            assert ack.endswith("~")
-
-        # Snapshot the 997 for first group
-        ack = generate_997(result.interchange.groups[0], control_number="0001")
-        assert ack == snapshot
-
-
-@pytest.mark.skipif(
-    not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
+    reason="X12 sample files not found",
 )
 class TestSchemaValidation:
     """Tests for schema-based validation of sample files."""
@@ -439,131 +202,7 @@ class TestSchemaValidation:
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
-)
-class TestSpecificSamples:
-    """Tests for specific sample files with detailed verification."""
-
-    def test_837p_professional_claim(
-        self,
-        schema_loader: GeneratedX12SchemaLoader,
-        snapshot,
-    ):
-        """Test parsing 837P Professional Claim sample."""
-        x12_file = HIPAA_SAMPLES_DIR / "837P_professional_claim.x12"
-        if not x12_file.exists():
-            pytest.skip(f"File not found: {x12_file}")
-
-        result = parse_file(x12_file, schema_loader=schema_loader)
-
-        assert result.interchange is not None
-
-        # Verify structure
-        assert result.interchange.version == "00501"
-        assert len(result.interchange.groups) == 1
-
-        group = result.interchange.groups[0]
-        assert group.functional_id == "HC"
-
-        txn = group.transactions[0]
-        assert txn.transaction_id == "837"
-        assert txn.schema is not None  # Schema should be attached
-
-        # Content should have LoopInstances (parsed with schema)
-        loop_instances = [item for item in txn.content if isinstance(item, LoopInstance)]
-        assert len(loop_instances) > 0
-
-        parsed = interchange_to_dict(result.interchange)
-        assert parsed == snapshot
-
-    def test_835_remittance(
-        self,
-        schema_loader: GeneratedX12SchemaLoader,
-        snapshot,
-    ):
-        """Test parsing 835 Remittance Advice sample."""
-        x12_file = HIPAA_SAMPLES_DIR / "835_remittance.x12"
-        if not x12_file.exists():
-            pytest.skip(f"File not found: {x12_file}")
-
-        result = parse_file(x12_file, schema_loader=schema_loader)
-
-        assert result.interchange is not None
-
-        group = result.interchange.groups[0]
-        assert group.functional_id == "HP"
-
-        txn = group.transactions[0]
-        assert txn.transaction_id == "835"
-        assert txn.schema is not None
-
-        parsed = interchange_to_dict(result.interchange)
-        assert parsed == snapshot
-
-    def test_270_eligibility_inquiry(
-        self,
-        schema_loader: GeneratedX12SchemaLoader,
-        snapshot,
-    ):
-        """Test parsing 270 Eligibility Inquiry sample."""
-        x12_file = HIPAA_SAMPLES_DIR / "270_eligibility_inquiry.x12"
-        if not x12_file.exists():
-            pytest.skip(f"File not found: {x12_file}")
-
-        result = parse_file(x12_file, schema_loader=schema_loader)
-
-        assert result.interchange is not None
-
-        group = result.interchange.groups[0]
-        assert group.functional_id == "HS"
-
-        txn = group.transactions[0]
-        assert txn.transaction_id == "270"
-
-        # 270 uses HL hierarchy
-        loop_instances = [item for item in txn.content if isinstance(item, LoopInstance)]
-        assert len(loop_instances) > 0
-
-        parsed = interchange_to_dict(result.interchange)
-        assert parsed == snapshot
-
-    def test_850_purchase_order(
-        self,
-        snapshot,
-    ):
-        """Test parsing 850 Purchase Order sample from logistics directory."""
-        x12_file = LOGISTICS_SAMPLES_DIR / "850_purchase_order.x12"
-        if not x12_file.exists():
-            pytest.skip(f"File not found: {x12_file}")
-
-        # Use 004010 schema to match the sample file version
-        schema_loader = GeneratedX12SchemaLoader(version="004010")
-        result = parse_file(x12_file, schema_loader=schema_loader)
-
-        assert result.interchange is not None
-
-        # Verify structure
-        assert result.interchange.version == "00401"
-        assert len(result.interchange.groups) == 1
-
-        group = result.interchange.groups[0]
-        assert group.functional_id == "PO"
-
-        txn = group.transactions[0]
-        assert txn.transaction_id == "850"
-        assert txn.schema is not None  # Schema should be attached
-
-        # Verify no parsing errors
-        assert len(txn.errors) == 0, f"Expected no errors, got: {txn.errors}"
-
-        # Snapshot the parsed content structure
-        content = [content_item_to_dict(item) for item in txn.content]
-        assert content == snapshot
-
-
-@pytest.mark.skipif(
-    not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
+    reason="X12 sample files not found",
 )
 class TestLoopHierarchyCaching:
     """Tests for loop_hierarchy caching on X12Schema."""
@@ -607,7 +246,7 @@ class TestLoopHierarchyCaching:
 
 @pytest.mark.skipif(
     not SAMPLE_FILES,
-    reason=f"X12 sample files not found at {X12_SAMPLES_DIR}",
+    reason="X12 sample files not found",
 )
 class TestParseStatistics:
     """Tests for parse statistics across sample files."""
