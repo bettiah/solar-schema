@@ -12,23 +12,34 @@ The Mapping Engine converts X12 EDI transactions to semantic business models usi
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      MappingEngine                              │
+│                  BuilderMappingEngine                            │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │              TransactionMapping Definition               │   │
 │  │  (e.g., INVOICE_810_MAPPING, ORDER_850_MAPPING)         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                              │                                  │
+│  ┌───────────────────────────┼───────────────────────┐         │
+│  │              Dispatch Tables (built once)          │         │
+│  │  segment_tag → [handlers]   loop_id → [handlers]  │         │
+│  └───────────────────────────┼───────────────────────┘         │
+│                              │                                  │
 │         ┌────────────────────┼────────────────────┐            │
 │         ▼                    ▼                    ▼            │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │   Field     │    │  Qualified  │    │    Loop     │        │
-│  │  Mappings   │    │  Mappings   │    │  Mappings   │        │
+│  │   Field     │    │  Qualified  │    │ Loop/Party  │        │
+│  │  Handlers   │    │  Handlers   │    │  Handlers   │        │
 │  └─────────────┘    └─────────────┘    └─────────────┘        │
+│         │                    │                    │            │
+│         └────────────────────┼────────────────────┘            │
+│                              ▼                                  │
+│              Box Dict Accumulator (auto-vivification)           │
 │                              │                                  │
 │                              ▼                                  │
-│            Deferred Field Resolution                            │
-│           (for nested object creation)                          │
+│              Post-processing (delivery merge, currency, etc.)   │
+│                              │                                  │
+│                              ▼                                  │
+│         strip_empty_boxes → model_validate(dict)               │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -40,15 +51,15 @@ The Mapping Engine converts X12 EDI transactions to semantic business models usi
 
 ## Core Components
 
-### MappingEngine
+### BuilderMappingEngine
 
-The main class that executes declarative mappings.
+Single-pass mapping engine using a Box dict accumulator. Builds a plain dict via Box auto-vivification, then calls `model_validate(dict)` once at the end to produce the Pydantic model.
 
 ```python
-from edi_schema.semantic.mapping import MappingEngine
+from edi_schema.semantic.mapping import BuilderMappingEngine
 from edi_schema.semantic.mapping.x12 import INVOICE_810_MAPPING
 
-engine = MappingEngine(
+engine = BuilderMappingEngine(
     mapping=INVOICE_810_MAPPING,
     error_mode=ErrorHandlingMode.LENIENT,  # STRICT | LENIENT
     collect_metrics=True,                   # Performance/coverage metrics
@@ -60,6 +71,21 @@ result = engine.to_semantic(parsed_transaction, context)
 if result.success:
     invoice = result.model  # Semantic Invoice object
 ```
+
+### How it works
+
+1. **Pre-pass**: Map ISA/GS envelope fields and external context metadata
+2. **Normalize**: Convert implicit loops (bare segments) into `LoopInstance` objects — O(n)
+3. **Single forward pass**: Iterate content once, dispatching each segment/loop to registered handlers via dispatch tables
+4. **Post-processing**: Delivery merging, party wrapper fixups, currency defaults, TXI aggregation
+5. **Build model**: `strip_empty_boxes()` → `model_validate(dict)`
+6. **Validate**: Run validation rules, report unmapped segments
+
+### Why Box
+
+- **Auto-vivification eliminates deferred fields**: `builder.order_reference.id = "P792940"` auto-creates intermediate dicts — no need for parent objects to exist first
+- **No phase ordering needed**: `builder.delivery[0].delivery_terms.code = "FOB"` works regardless of whether `delivery[0].delivery_party` has been set yet
+- **Single pass**: iterate content once, dispatch each segment/loop to registered handlers
 
 ### TransactionMapping
 
@@ -161,83 +187,94 @@ PartyLoopMapping(
 
 ---
 
-## Mapping Phases
+## Handler Architecture
 
-The engine processes mappings in a specific order:
+### Dispatch Tables
 
-| Phase | Description | Method |
-|-------|-------------|--------|
-| **1** | Extract required fields for model creation | `_extract_required_fields` |
-| **2** | Map ISA/GS envelope fields | `_map_envelope_fields` |
-| **3** | Map external context metadata | `_map_context_fields` |
-| **4** | Map optional header fields | `_map_optional_field_mappings` |
-| **5** | Map qualified segments (DTM, REF) | `_map_qualified_segments` |
-| **5.1** | Resolve deferred nested fields | `_resolve_deferred_fields` |
-| **5.5** | Map SAC allowance/charge segments | `_map_sac_segments` |
-| **5.6** | Map TXI tax segments | `_map_txi_segments` |
-| **6** | Map N1 party loops | `_map_party_loops` |
-| **6.5** | Map header-level PER segments | `_map_header_per_segments` |
-| **6.6-6.13** | Special segment handlers (FOB, TD5, MSG, AMT, TDS, CAD, NTE) | Various |
-| **7** | Map item loops (PO1, IT1) | `_map_loop` |
-| **8** | Run validation rules | Validation rules |
-| **9** | Report unmapped segments | `_report_unmapped_segments` |
+Built once in `BuilderMappingEngine.__init__()`, mapping segment tags and loop IDs to lists of handlers:
+
+```python
+# Segment dispatch: tag → [FieldMappingHandler, QualifiedMappingHandler, special handlers]
+# Loop dispatch:    loop_id → [LoopItemHandler, PartyLoopHandler]
+```
+
+### Core Handlers
+
+| Handler | Source | Description |
+|---------|--------|-------------|
+| `FieldMappingHandler` | `handlers/field.py` | Wraps a `FieldMapping`. Checks qualifier, extracts value, applies transform, writes via `set_box_path` |
+| `QualifiedMappingHandler` | `handlers/qualified.py` | Wraps a `QualifiedMapping`. Reads qualifier element, looks up sub-mappings |
+| `LoopItemHandler` | `handlers/loop.py` | Wraps a `LoopMapping`. Creates list entries, maps fields/qualified within loop context. Handles product IDs (PO1/IT1 elements 6-25) and SCH delivery schedules |
+| `PartyLoopHandler` | `handlers/party.py` | Wraps a `PartyLoopMapping`. Reads N1*01 qualifier, resolves target path, maps N1/N2/N3/N4/PER fields |
+
+### Special Handlers
+
+Pluggable handlers registered per transaction type in `handlers/registry.py`. Each encapsulates segment-specific logic beyond declarative mappings:
+
+| Handler | File | Segment | Description |
+|---------|------|---------|-------------|
+| `SACHandler` | `special/sac.py` | SAC | Allowance/charge (header + line level) |
+| `TXIHandler` | `special/txi.py` | TXI | Tax segments (header + line level) |
+| `FOBHandler` | `special/fob.py` | FOB | Delivery terms |
+| `TD5Handler` | `special/td5.py` | TD5 | Carrier/routing info |
+| `MSGHandler` | `special/msg.py` | MSG | Message notes |
+| `AMTHandler` | `special/amt.py` | AMT | Monetary totals |
+| `TDSHandler` | `special/tds.py` | TDS | Invoice totals (cents → dollars) |
+| `CADHandler` | `special/cad.py` | CAD | Carrier detail (810) |
+| `NTEHandler` | `special/nte.py` | NTE | Header notes (810) |
+| `HeaderPERHandler` | `special/per.py` | PER | Header-level contacts |
+| `DTMDespatchHandler` | `special/dtm_despatch.py` | DTM | Despatch dates |
+
+### Handler Registry
+
+```python
+# handlers/registry.py
+HANDLER_REGISTRY: dict[str, dict[str, list]] = {
+    "850": {"SAC": [_sac], "TXI": [_txi], "FOB": [_fob], "TD5": [_td5], ...},
+    "810": {"SAC": [_sac], "TXI": [_txi], "FOB": [_fob], "TDS": [_tds], ...},
+    "856": {"SAC": [_sac], "FOB": [_fob], "TD5": [_td5], ...},
+}
+
+# Line-level handlers invoked per loop item (with item_prefix)
+LINE_HANDLER_REGISTRY: dict[str, dict[str, list]] = {
+    "850": {"PO1": {"SAC": [_sac]}},
+    "810": {"IT1": {"SAC": [_sac], "TXI": [_txi]}},
+}
+```
 
 ---
 
-## Deferred Field Collection
+## Box Path Utilities
 
-### Problem
+`set_box_path(builder, path, value, ctx)` in `handlers/base.py` handles:
 
-When mapping nested paths like `order_reference.issue_date`, the parent object (`order_reference`) may be `None` and can't be auto-created because it has required fields.
+| Syntax | Example | Behavior |
+|--------|---------|----------|
+| Dot paths | `order_reference.id` | Auto-vivifies intermediate dicts |
+| Indexed lists | `delivery[0].delivery_terms.code` | Auto-creates list, pads with Box items |
+| Append | `additional_document_references[+].id` | Appends new item to list |
 
-**Examples that fail without deferred collection:**
+`strip_empty_boxes(d)` recursively removes empty dicts/Boxes left by auto-vivification before `model_validate`.
 
-| Source | Target Path | Issue |
-|--------|-------------|-------|
-| `BIG*03` | `order_reference.issue_date` | `order_reference` is None, requires `id` |
-| `BIG*04` | `order_reference.id` | Same - parent is None |
-| `ITD*07` | `payment_terms[0].settlement_period_days` | List is empty |
-| `IT1*02` | `invoiced_quantity.value` | Requires `value` + `unit_code` together |
+`ensure_list(builder, path)` converts auto-vivified Box dicts to Python lists at a given path.
 
-### Solution
+---
 
-Instead of setting nested fields immediately, collect related fields targeting the same parent, then create the parent with all values at once.
+## Post-Processing
 
-```python
-# During mapping, collect deferred values:
-deferred_values = {
-    "order_reference": {
-        "issue_date": date(2010, 12, 4),
-        "id": "P792940",
-    },
-    "payment_terms[0]": {
-        "settlement_period_days": 60,
-    },
-}
+After the single forward pass, several post-processing steps normalize the accumulated dict:
 
-# After all field mappings, resolve deferred objects:
-for parent_path, field_values in deferred_values.items():
-    parent_type = get_field_type_for_path(model, parent_path)
-    required_fields = get_required_fields(parent_type)
-
-    if required_fields <= field_values.keys():
-        instance = parent_type(**field_values)
-        set_nested_attr(model, parent_path, instance)
-```
-
-### Implementation
-
-Key functions in `engine.py`:
-
-| Function | Description |
-|----------|-------------|
-| `get_field_type_for_path()` | Get type annotation for any nested path |
-| `get_required_fields()` | Get required fields of a Pydantic model |
-| `get_parent_path()` | Extract parent from nested path |
-| `analyze_field_groups()` | Pre-analyze mappings to detect field groups |
-| `_resolve_deferred_fields()` | Create objects from collected values |
-| `_resolve_deferred_object()` | Create nested objects |
-| `_resolve_deferred_list_item()` | Create and append list items |
+| Step | Method | Description |
+|------|--------|-------------|
+| Unseen defaults | `_apply_unseen_defaults` | Apply `default` values for segments not seen in content |
+| TXI aggregation | `_resolve_txi_subtotals` | Convert accumulated TXI subtotals to TaxTotal |
+| Delivery merge | `_merge_delivery_entries` | Merge FOB/TD5/DTM `delivery[0]` with party `delivery[1]` |
+| Location copy | `_copy_delivery_locations` | Copy delivery_party.postal_address to delivery_location |
+| Party wrappers | `_ensure_party_wrappers` | Ensure CustomerParty/SupplierParty have required `party` field |
+| Price currency | `_ensure_price_currency` | Add default currency to price amounts |
+| Amount currency | `_ensure_amount_currencies` | Add currency to monetary total amounts |
+| Empty cleanup | `strip_empty_boxes` | Remove empty dicts from auto-vivification |
+| Required restore | `_restore_required_empty_objects` | Restore required empty `party: {}` removed by cleanup |
 
 ---
 
@@ -330,7 +367,7 @@ metrics.get_unmapped_summary()      # Unmapped segments/elements
 Enable `debug_mode=True` for detailed execution trace:
 
 ```python
-engine = MappingEngine(mapping, debug_mode=True)
+engine = BuilderMappingEngine(mapping, debug_mode=True)
 result = engine.to_semantic(transaction)
 
 for step in result.trace.steps:
@@ -364,31 +401,12 @@ INVOICE_VALIDATION_RULES = [
 
 ---
 
-## Special Handlers
-
-Some segments require custom handling beyond declarative mappings:
-
-| Handler | Segment | Description |
-|---------|---------|-------------|
-| `_map_tds_totals` | TDS | Converts cents to dollars for 810 |
-| `_map_cad_to_shipment` | CAD | Carrier details for 810 |
-| `_map_nte_notes` | NTE | Header notes for 810 |
-| `_map_fob_to_delivery` | FOB | Delivery terms |
-| `_map_td5_to_shipment` | TD5 | Carrier/routing info |
-| `_map_msg_notes` | MSG | Message notes |
-| `_map_amt_totals` | AMT | Monetary totals |
-| `_map_dtm_despatch` | DTM | Despatch dates |
-| `_extract_po1_product_ids` | PO1 | Product ID pairs in elements 06-25 |
-| `_extract_it1_product_ids` | IT1 | Product ID pairs in elements 06-25 |
-
----
-
 ## Usage Example
 
 ```python
 from edi_schema.x12.parser import parse_file
 from edi_schema.x12.schemas import GeneratedX12SchemaLoader
-from edi_schema.semantic.mapping import MappingEngine
+from edi_schema.semantic.mapping import BuilderMappingEngine
 from edi_schema.semantic.mapping.x12 import INVOICE_810_MAPPING
 
 # Parse X12 document
@@ -397,7 +415,7 @@ parse_result = parse_file("invoice.x12", schema_loader=loader)
 transaction = parse_result.interchange.groups[0].transactions[0]
 
 # Map to semantic model
-engine = MappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
+engine = BuilderMappingEngine(INVOICE_810_MAPPING, collect_metrics=True)
 result = engine.to_semantic(transaction)
 
 if result.success:
@@ -407,7 +425,6 @@ if result.success:
     print(f"Total: {invoice.legal_monetary_total.payable_amount.value}")
     print(f"Lines: {len(invoice.invoice_lines)}")
 
-    # Order reference (created via deferred field collection)
     if invoice.order_reference:
         print(f"PO: {invoice.order_reference.id}")
 else:
@@ -441,26 +458,54 @@ MY_999_MAPPING = TransactionMapping(
 )
 ```
 
-2. **Add validation rules** in `validations/my_rules.py`
+2. **Register special handlers** (if needed) in `handlers/registry.py`
 
-3. **Export from `__init__.py`**
+3. **Add validation rules** in `validations/my_rules.py`
 
-4. **Add tests** in `tests/semantic/test_x12_my_mapper.py`
+4. **Export from `__init__.py`**
 
-5. **Update mapping index** in `plans/mapping/mapping-index.md`
+5. **Add tests** in `tests/semantic/test_x12_my_mapper.py`
 
 ---
 
-## Related Files
+## File Structure
 
-| File | Description |
-|------|-------------|
-| `engine.py` | Core mapping engine implementation |
-| `types.py` | Mapping type definitions (FieldMapping, etc.) |
-| `transforms.py` | Value transformation functions |
-| `validation.py` | Validation rule framework |
-| `errors.py` | Error types and accumulator |
-| `diagnostics.py` | Metrics and tracing |
-| `context.py` | Message context for envelope data |
-| `result.py` | MappingResult container |
-| `x12/*.py` | Transaction-specific mappings (810, 850, etc.) |
+```
+src/edi_schema/semantic/mapping/
+├── __init__.py              # Public API exports
+├── builder_engine.py        # BuilderMappingEngine (single-pass engine)
+├── segment_utils.py         # Shared utilities (get_element_value, find_all_loops)
+├── types.py                 # Mapping type definitions (FieldMapping, etc.)
+├── transforms.py            # Value transformation functions
+├── validation.py            # Validation rule framework
+├── errors.py                # Error types and accumulator
+├── diagnostics.py           # Metrics and tracing
+├── context.py               # Message context for envelope data
+├── result.py                # MappingResult container
+├── handlers/
+│   ├── __init__.py          # Handler exports
+│   ├── base.py              # Handler protocols, HandlerContext, set_box_path()
+│   ├── field.py             # FieldMappingHandler
+│   ├── qualified.py         # QualifiedMappingHandler
+│   ├── loop.py              # LoopItemHandler
+│   ├── party.py             # PartyLoopHandler
+│   ├── registry.py          # Handler registry per transaction type
+│   └── special/
+│       ├── __init__.py
+│       ├── sac.py           # SAC allowance/charge
+│       ├── txi.py           # TXI tax
+│       ├── fob.py           # FOB delivery terms
+│       ├── td5.py           # TD5 carrier/shipping
+│       ├── msg.py           # MSG notes
+│       ├── amt.py           # AMT totals
+│       ├── tds.py           # TDS invoice totals (cents)
+│       ├── cad.py           # CAD carrier detail
+│       ├── nte.py           # NTE notes
+│       ├── per.py           # PER header contacts
+│       └── dtm_despatch.py  # DTM despatch dates
+└── x12/
+    ├── __init__.py
+    ├── order_850.py         # ORDER_850_MAPPING
+    ├── invoice_810.py       # INVOICE_810_MAPPING
+    └── despatch_856.py      # DESPATCH_856_MAPPING
+```
